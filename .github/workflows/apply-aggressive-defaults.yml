@@ -1,0 +1,285 @@
+name: Apply aggressive defaults
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/apply-aggressive-defaults.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Update skill contract and documentation
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          from pathlib import Path
+
+          skill_path = Path("SKILL.md")
+          skill = skill_path.read_text(encoding="utf-8")
+
+          replacements = {
+              "| `commit` | `false`, `checkpoint`, `final` | `false` | Optional local commit behavior. Never implies push. |":
+                  "| `commit` | `false`, `checkpoint`, `final` | `checkpoint` | Local commit behavior. The aggressive default creates verified checkpoint commits and never implies push. |",
+              "| `max_epochs` | integer `1..50` | `10` | Guard against an unbounded self-generated loop. |":
+                  "| `max_epochs` | integer `1..50` | `25` | Guard against an unbounded self-generated loop while allowing deep repository-wide maintenance. |",
+              "| `quiescence_scans` | integer `1..5` | `3` | Consecutive clean full-scope scans required for convergence. |":
+                  "| `quiescence_scans` | integer `1..5` | `2` | Consecutive clean full-scope scans required for convergence. |",
+              "commit=false\nmax_epochs=10\nquiescence_scans=3":
+                  "commit=checkpoint\nmax_epochs=25\nquiescence_scans=2",
+              "Default: `commit=false`.":
+                  "Default: `commit=checkpoint`.",
+          }
+
+          for old, new in replacements.items():
+              count = skill.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one occurrence, got {count}: {old!r}")
+              skill = skill.replace(old, new)
+
+          insertion_point = "candidate_retry_limit=2\n```\n\n“Find all” means"
+          insertion = (
+              "candidate_retry_limit=2\n```\n\n"
+              "The default profile is intentionally aggressive within local repository boundaries. "
+              "It applies every eligible finding, uses all supported discovery categories, performs public read-only research, "
+              "creates verified local checkpoint commits, and continues through repeated full-scope rescans. "
+              "It still never permits push, merge, deployment, release, production mutation, destructive Git cleanup, "
+              "secret handling, or overwriting unrelated user work.\n\n"
+              "“Find all” means"
+          )
+          if skill.count(insertion_point) != 1:
+              raise SystemExit("default profile insertion point not found exactly once")
+          skill = skill.replace(insertion_point, insertion)
+          skill_path.write_text(skill, encoding="utf-8")
+
+          examples = '''# Invocation examples
+
+          ## Default aggressive apply run
+
+          ```text
+          $autonomous-maintainer
+          ```
+
+          The default invocation is intentionally aggressive within local repository boundaries. It discovers and applies every automatically eligible finding across all supported categories, uses public read-only research, creates verified local checkpoint commits, allows up to 25 implementation epochs, and requires two consecutive clean full-scope scans before convergence.
+
+          It still never permits push, merge, deployment, release, production mutation, destructive Git cleanup, secret handling, or overwriting unrelated user work.
+
+          ## Linux launch and invocation
+
+          From the repository you want to maintain, launch OMX in an isolated worktree:
+
+          ```bash
+          omx --worktree=maintenance/autonomous --madmax --xhigh
+          ```
+
+          Then invoke the skill inside Codex:
+
+          ```text
+          $autonomous-maintainer
+          ```
+
+          The explicit equivalent is:
+
+          ```text
+          $autonomous-maintainer mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
+          ```
+
+          The `--madmax` and `--xhigh` launch flags are operator choices made outside the skill. The skill does not enable them itself.
+
+          ## Report-only audit
+
+          ```text
+          $autonomous-maintainer mode=report
+          ```
+
+          Builds the inventory, baseline, findings ledger, dependency graph, and plan without editing implementation files or creating commits.
+
+          ## Correctness and security focus
+
+          ```text
+          $autonomous-maintainer focus=correctness,reliability,tests,security
+          ```
+
+          ## Disable autonomous feature additions
+
+          ```text
+          $autonomous-maintainer feature_policy=off
+          ```
+
+          ## Require explicit documented feature promises
+
+          ```text
+          $autonomous-maintainer feature_policy=documented
+          ```
+
+          ## Limit parallel work
+
+          ```text
+          $autonomous-maintainer parallelism=4
+          ```
+
+          ## Offline/local-evidence run
+
+          ```text
+          $autonomous-maintainer network=off
+          ```
+
+          ## Disable local commits
+
+          ```text
+          $autonomous-maintainer commit=false
+          ```
+
+          The aggressive default is `commit=checkpoint`. This override keeps all verified changes uncommitted.
+
+          ## Single final local commit
+
+          ```text
+          $autonomous-maintainer commit=final
+          ```
+
+          This permits at most one verified local commit after the complete final gate passes. It never permits push.
+
+          ## Constrained run
+
+          ```text
+          $autonomous-maintainer focus=correctness,tests "do not modify frontend/ or add dependencies"
+          ```
+
+          ## Resume
+
+          ```text
+          $autonomous-maintainer resume
+          ```
+
+          ## Convergence controls
+
+          ```text
+          $autonomous-maintainer max_epochs=25 quiescence_scans=2
+          ```
+
+          `max_epochs` must be greater than or equal to `quiescence_scans`.
+
+          ## Supported options
+
+          | Option | Values | Default |
+          |---|---|---|
+          | `mode` | `apply`, `report` | `apply` |
+          | `focus` | `all` or comma-separated categories | `all` |
+          | `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` |
+          | `resume` | `true`, `false` | `true` |
+          | `commit` | `false`, `checkpoint`, `final` | `checkpoint` |
+          | `max_epochs` | `1..50` | `25` |
+          | `quiescence_scans` | `1..5` | `2` |
+          | `parallelism` | `auto`, `1..16` | `auto` |
+          | `network` | `off`, `public-read` | `public-read` |
+
+          Valid focus categories:
+
+          ```text
+          correctness, reliability, tests, security, maintainability,
+          documentation, developer-experience, performance, features,
+          dependencies, compatibility
+          ```
+          '''
+          examples = "\n".join(line[10:] if line.startswith("          ") else line for line in examples.splitlines()) + "\n"
+          Path("examples/invocations.md").write_text(examples, encoding="utf-8")
+
+          readme_path = Path("README.md")
+          readme = readme_path.read_text(encoding="utf-8")
+          old_usage = '''Basic invocation:
+
+          ```text
+          $autonomous-maintainer
+          ```
+
+          Safer first run in report-only mode:'''
+          old_usage = "\n".join(line[10:] if line.startswith("          ") else line for line in old_usage.splitlines())
+          new_usage = '''Aggressive default invocation:
+
+          ```text
+          $autonomous-maintainer
+          ```
+
+          This is equivalent to:
+
+          ```text
+          $autonomous-maintainer mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
+          ```
+
+          The default creates verified local checkpoint commits and performs repeated repository-wide scans. It still never pushes, merges, deploys, releases, or overwrites unrelated user work.
+
+          Safer first run in report-only mode:'''
+          new_usage = "\n".join(line[10:] if line.startswith("          ") else line for line in new_usage.splitlines())
+          if readme.count(old_usage) != 1:
+              raise SystemExit("README usage insertion point not found exactly once")
+          readme = readme.replace(old_usage, new_usage)
+          readme_path.write_text(readme, encoding="utf-8")
+
+          Path("VERSION").write_text("1.1.0\n", encoding="utf-8")
+
+          changelog = '''# Changelog
+
+          ## 1.1.0 — 2026-07-03
+
+          - Changed the default profile to aggressive repository-wide apply mode with verified local checkpoint commits.
+          - Increased the default maintenance budget to 25 epochs and reduced convergence to two consecutive clean full-scope scans.
+          - Added a ready-to-copy Linux OMX launch command and an explicit equivalent invocation.
+          - Preserved the no-push, no-merge, no-deploy, no-release, and unrelated-user-work safety boundaries.
+
+          ## 1.0.0 — 2026-07-02
+
+          - Added the autonomous-maintainer OMX skill.
+          - Added safe user/project installers for POSIX shells and PowerShell.
+          - Added uninstallers, structural validation, installer smoke tests, CI, examples, and documentation.
+          '''
+          changelog = "\n".join(line[10:] if line.startswith("          ") else line for line in changelog.splitlines()) + "\n"
+          Path("CHANGELOG.md").write_text(changelog, encoding="utf-8")
+
+          checksum_path = Path("CHECKSUMS.txt")
+          checksum_lines = checksum_path.read_text(encoding="utf-8").splitlines()
+          changed = {
+              "./CHANGELOG.md",
+              "./README.md",
+              "./SKILL.md",
+              "./VERSION",
+              "./examples/invocations.md",
+          }
+          updated_lines = []
+          for line in checksum_lines:
+              digest, rel = line.split(maxsplit=1)
+              if rel in changed:
+                  file_path = Path(rel.removeprefix("./"))
+                  digest = hashlib.sha256(file_path.read_bytes()).hexdigest()
+              updated_lines.append(f"{digest}  {rel}")
+          checksum_path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
+          PY
+
+      - name: Validate updated package
+        shell: bash
+        run: |
+          python3 scripts/validate_skill.py SKILL.md
+          bash tests/test_installers.sh
+          sha256sum --check CHECKSUMS.txt
+
+      - name: Commit updated defaults
+        shell: bash
+        run: |
+          rm -f .github/workflows/apply-aggressive-defaults.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Make aggressive checkpoint profile the default"
+          git push origin HEAD:main
