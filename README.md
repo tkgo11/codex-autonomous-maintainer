@@ -52,7 +52,7 @@ Official OMX documentation recommends user skills under `~/.codex/skills/` and p
 ```bash
 git clone https://github.com/tkgo11/autonomous-maintainer-skill.git
 cd autonomous-maintainer-skill
-./install.sh --scope user
+bash ./install.sh --scope user
 ```
 
 This installs:
@@ -64,7 +64,7 @@ ${CODEX_HOME:-$HOME/.codex}/skills/autonomous-maintainer/SKILL.md
 ### macOS or Linux — project scope
 
 ```bash
-./install.sh --scope project --project-dir /path/to/target-repository
+bash ./install.sh --scope project --project-dir /path/to/target-repository
 ```
 
 This installs:
@@ -102,9 +102,9 @@ The installers:
 Examples:
 
 ```bash
-./install.sh --scope user --dry-run
-./install.sh --scope user --force
-./install.sh --scope project --project-dir "$PWD" --force
+bash ./install.sh --scope user --dry-run
+bash ./install.sh --scope user --force
+bash ./install.sh --scope project --project-dir "$PWD" --force
 ```
 
 ```powershell
@@ -194,14 +194,14 @@ omx setup --scope project --merge-agents
 
 ```bash
 git pull --ff-only
-./install.sh --scope user --force
+bash ./install.sh --scope user --force
 ```
 
 For project scope:
 
 ```bash
 git pull --ff-only
-./install.sh --scope project --project-dir /path/to/target-repository --force
+bash ./install.sh --scope project --project-dir /path/to/target-repository --force
 ```
 
 A forced update backs up the previous installed `SKILL.md` beside the destination before replacing it.
@@ -211,8 +211,8 @@ A forced update backs up the previous installed `SKILL.md` beside the destinatio
 ### macOS or Linux
 
 ```bash
-./uninstall.sh --scope user
-./uninstall.sh --scope project --project-dir /path/to/target-repository
+bash ./uninstall.sh --scope user
+bash ./uninstall.sh --scope project --project-dir /path/to/target-repository
 ```
 
 ### Windows PowerShell
