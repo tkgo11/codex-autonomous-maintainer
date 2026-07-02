@@ -66,9 +66,9 @@ Supported options:
 | `focus` | `all` or comma-separated categories | `all` | Limit discovery categories without silently shrinking path coverage. |
 | `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` | Controls autonomous feature-gap eligibility. |
 | `resume` | `true`, `false` | `true` | Resume a compatible active run instead of creating a competing run. |
-| `commit` | `false`, `checkpoint`, `final` | `false` | Optional local commit behavior. Never implies push. |
-| `max_epochs` | integer `1..50` | `10` | Guard against an unbounded self-generated loop. |
-| `quiescence_scans` | integer `1..5` | `3` | Consecutive clean full-scope scans required for convergence. |
+| `commit` | `false`, `checkpoint`, `final` | `checkpoint` | Local commit behavior. The aggressive default creates verified checkpoint commits and never implies push. |
+| `max_epochs` | integer `1..50` | `25` | Guard against an unbounded self-generated loop while allowing deep repository-wide maintenance. |
+| `quiescence_scans` | integer `1..5` | `2` | Consecutive clean full-scope scans required for convergence. |
 | `parallelism` | `auto` or integer `1..16` | `auto` | Maximum independent discovery or implementation lanes. |
 | `network` | `off`, `public-read` | `public-read` | Public read-only research only; never authenticated or mutating network access. |
 
@@ -115,13 +115,15 @@ mode=apply
 focus=all
 feature_policy=strong-evidence
 resume=true
-commit=false
-max_epochs=10
-quiescence_scans=3
+commit=checkpoint
+max_epochs=25
+quiescence_scans=2
 parallelism=auto
 network=public-read
 candidate_retry_limit=2
 ```
+
+The default profile is intentionally aggressive within local repository boundaries. It applies every eligible finding, uses all supported discovery categories, performs public read-only research, creates verified local checkpoint commits, and continues through repeated full-scope rescans. It still never permits push, merge, deployment, release, production mutation, destructive Git cleanup, secret handling, or overwriting unrelated user work.
 
 “Find all” means all findings discoverable within the declared scope, available evidence, supported tooling, and safety boundaries. It does not mean every imaginable edit or a claim of mathematical completeness.
 
@@ -727,7 +729,7 @@ If safe candidate rollback cannot be proved without affecting unrelated user wor
 
 ## 21. Commit Policy
 
-Default: `commit=false`.
+Default: `commit=checkpoint`.
 
 For `commit=checkpoint`:
 

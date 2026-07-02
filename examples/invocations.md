@@ -1,12 +1,36 @@
 # Invocation examples
 
-## Default apply run
+## Default aggressive apply run
 
 ```text
 $autonomous-maintainer
 ```
 
-Discovers and applies all automatically eligible findings across all supported categories.
+The default invocation is intentionally aggressive within local repository boundaries. It discovers and applies every automatically eligible finding across all supported categories, uses public read-only research, creates verified local checkpoint commits, allows up to 25 implementation epochs, and requires two consecutive clean full-scope scans before convergence.
+
+It still never permits push, merge, deployment, release, production mutation, destructive Git cleanup, secret handling, or overwriting unrelated user work.
+
+## Linux launch and invocation
+
+From the repository you want to maintain, launch OMX in an isolated worktree:
+
+```bash
+omx --worktree=maintenance/autonomous --madmax --xhigh
+```
+
+Then invoke the skill inside Codex:
+
+```text
+$autonomous-maintainer
+```
+
+The explicit equivalent is:
+
+```text
+$autonomous-maintainer mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
+```
+
+The `--madmax` and `--xhigh` launch flags are operator choices made outside the skill. The skill does not enable them itself.
 
 ## Report-only audit
 
@@ -14,7 +38,7 @@ Discovers and applies all automatically eligible findings across all supported c
 $autonomous-maintainer mode=report
 ```
 
-Builds the inventory, baseline, findings ledger, dependency graph, and plan without editing implementation files.
+Builds the inventory, baseline, findings ledger, dependency graph, and plan without editing implementation files or creating commits.
 
 ## Correctness and security focus
 
@@ -46,13 +70,21 @@ $autonomous-maintainer parallelism=4
 $autonomous-maintainer network=off
 ```
 
-## Local checkpoint commits
+## Disable local commits
 
 ```text
-$autonomous-maintainer commit=checkpoint
+$autonomous-maintainer commit=false
 ```
 
-This permits verified local commits only. It never permits push.
+The aggressive default is `commit=checkpoint`. This override keeps all verified changes uncommitted.
+
+## Single final local commit
+
+```text
+$autonomous-maintainer commit=final
+```
+
+This permits at most one verified local commit after the complete final gate passes. It never permits push.
 
 ## Constrained run
 
@@ -69,7 +101,7 @@ $autonomous-maintainer resume
 ## Convergence controls
 
 ```text
-$autonomous-maintainer max_epochs=12 quiescence_scans=3
+$autonomous-maintainer max_epochs=25 quiescence_scans=2
 ```
 
 `max_epochs` must be greater than or equal to `quiescence_scans`.
@@ -82,9 +114,9 @@ $autonomous-maintainer max_epochs=12 quiescence_scans=3
 | `focus` | `all` or comma-separated categories | `all` |
 | `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` |
 | `resume` | `true`, `false` | `true` |
-| `commit` | `false`, `checkpoint`, `final` | `false` |
-| `max_epochs` | `1..50` | `10` |
-| `quiescence_scans` | `1..5` | `3` |
+| `commit` | `false`, `checkpoint`, `final` | `checkpoint` |
+| `max_epochs` | `1..50` | `25` |
+| `quiescence_scans` | `1..5` | `2` |
 | `parallelism` | `auto`, `1..16` | `auto` |
 | `network` | `off`, `public-read` | `public-read` |
 

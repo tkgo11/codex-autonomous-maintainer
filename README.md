@@ -209,11 +209,19 @@ python3 scripts/validate_skill.py SKILL.md
 
 ## Usage
 
-Basic invocation:
+Aggressive default invocation:
 
 ```text
 $autonomous-maintainer
 ```
+
+This is equivalent to:
+
+```text
+$autonomous-maintainer mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
+```
+
+The default creates verified local checkpoint commits and performs repeated repository-wide scans. It still never pushes, merges, deploys, releases, or overwrites unrelated user work.
 
 Safer first run in report-only mode:
 
