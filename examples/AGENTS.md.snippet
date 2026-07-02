@@ -1,0 +1,7 @@
+## Autonomous repository maintenance
+
+- Use `$autonomous-maintainer` only when the user explicitly requests repository-wide discovery and implementation, not for a single defined task.
+- Preserve pre-existing uncommitted work and repository-specific instructions.
+- Start with `mode=report` when authority, product intent, or safety boundaries are unclear.
+- Do not use this workflow to push, merge, deploy, release, publish, rewrite history, handle secrets, or mutate production systems.
+- Treat `.omx/maintenance/` and `.omx/ultragoal/` as durable run state; resume compatible active work instead of starting a competing run.
