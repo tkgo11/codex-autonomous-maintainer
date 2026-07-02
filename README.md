@@ -87,6 +87,87 @@ This installs:
 .\install.ps1 -Scope project -ProjectDir C:\path\to\target-repository
 ```
 
+## Manual install (without installer scripts)
+
+Only `SKILL.md` is required by Codex at runtime. The installer, uninstaller, examples, tests, and validation files are repository conveniences and do not need to be copied into the skill directory.
+
+Optionally validate the source file before copying it:
+
+```bash
+python3 scripts/validate_skill.py SKILL.md
+```
+
+### macOS or Linux — user scope
+
+```bash
+destination="${CODEX_HOME:-$HOME/.codex}/skills/autonomous-maintainer"
+mkdir -p "$destination"
+
+if [[ -f "$destination/SKILL.md" ]]; then
+  cp -p "$destination/SKILL.md" \
+    "$destination/SKILL.md.backup-$(date -u +%Y%m%dT%H%M%SZ)"
+fi
+
+cp ./SKILL.md "$destination/SKILL.md"
+cmp -s ./SKILL.md "$destination/SKILL.md"
+```
+
+### macOS or Linux — project scope
+
+```bash
+repository="/path/to/target-repository"
+destination="$repository/.codex/skills/autonomous-maintainer"
+mkdir -p "$destination"
+
+if [[ -f "$destination/SKILL.md" ]]; then
+  cp -p "$destination/SKILL.md" \
+    "$destination/SKILL.md.backup-$(date -u +%Y%m%dT%H%M%SZ)"
+fi
+
+cp ./SKILL.md "$destination/SKILL.md"
+cmp -s ./SKILL.md "$destination/SKILL.md"
+```
+
+### Windows PowerShell — user scope
+
+```powershell
+$CodexRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME '.codex' }
+$Destination = Join-Path $CodexRoot 'skills\autonomous-maintainer'
+$Target = Join-Path $Destination 'SKILL.md'
+New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+
+if (Test-Path -LiteralPath $Target) {
+    $Timestamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+    Copy-Item -LiteralPath $Target -Destination "$Target.backup-$Timestamp"
+}
+
+Copy-Item -LiteralPath '.\SKILL.md' -Destination $Target -Force
+if ((Get-FileHash '.\SKILL.md').Hash -ne (Get-FileHash $Target).Hash) {
+    throw 'Post-install verification failed.'
+}
+```
+
+### Windows PowerShell — project scope
+
+```powershell
+$Repository = 'C:\path\to\target-repository'
+$Destination = Join-Path $Repository '.codex\skills\autonomous-maintainer'
+$Target = Join-Path $Destination 'SKILL.md'
+New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+
+if (Test-Path -LiteralPath $Target) {
+    $Timestamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
+    Copy-Item -LiteralPath $Target -Destination "$Target.backup-$Timestamp"
+}
+
+Copy-Item -LiteralPath '.\SKILL.md' -Destination $Target -Force
+if ((Get-FileHash '.\SKILL.md').Hash -ne (Get-FileHash $Target).Hash) {
+    throw 'Post-install verification failed.'
+}
+```
+
+After a manual installation, restart Codex and use `/skills` to confirm that `autonomous-maintainer` is discovered.
+
 ## Installer safety behavior
 
 The installers:
