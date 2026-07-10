@@ -1,5 +1,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
+    [ValidateSet('omx', 'standalone')]
+    [string]$Variant = 'omx',
     [ValidateSet('user', 'project')]
     [string]$Scope = 'user',
     [string]$ProjectDir = '',
@@ -7,7 +9,11 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$SkillName = 'autonomous-maintainer'
+$SkillName = if ($Variant -eq 'standalone') {
+    'autonomous-maintainer-standalone'
+} else {
+    'autonomous-maintainer'
+}
 
 if ($Scope -eq 'user') {
     $CodexRoot = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $HOME '.codex' }
@@ -21,14 +27,24 @@ if ($Scope -eq 'user') {
 $TargetDir = Join-Path $TargetRoot $SkillName
 $TargetFile = Join-Path $TargetDir 'SKILL.md'
 
+foreach ($Candidate in @($TargetDir, $TargetFile)) {
+    if (Test-Path -LiteralPath $Candidate) {
+        $Item = Get-Item -LiteralPath $Candidate -Force
+        if ($Item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Refusing to uninstall through a symbolic-link/reparse-point destination: $Candidate"
+        }
+    }
+}
+
 if (-not (Test-Path -LiteralPath $TargetFile -PathType Leaf)) {
     Write-Host "not installed: $TargetFile"
     exit 0
 }
 
 $Content = Get-Content -LiteralPath $TargetFile -Raw
-if ($Content -notmatch '(?m)^name:\s*autonomous-maintainer\s*$') {
-    throw 'Refusing to remove a file that does not identify as autonomous-maintainer.'
+$NamePattern = '(?m)^name:\s*' + [regex]::Escape($SkillName) + '\s*$'
+if ($Content -notmatch $NamePattern) {
+    throw "Refusing to remove a file that does not identify as $SkillName."
 }
 
 Write-Host "remove: $TargetDir"

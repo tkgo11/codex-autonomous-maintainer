@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Dependency-free structural validation for autonomous-maintainer/SKILL.md."""
+"""Dependency-free structural validation for both maintained skill variants."""
 
 from __future__ import annotations
 
@@ -8,8 +8,6 @@ import re
 import sys
 from pathlib import Path
 
-EXPECTED_NAME = "autonomous-maintainer"
-EXPECTED_SECTIONS = list(range(1, 31))
 REQUIRED_OPTIONS = {
     "mode",
     "focus",
@@ -20,6 +18,46 @@ REQUIRED_OPTIONS = {
     "quiescence_scans",
     "parallelism",
     "network",
+}
+
+SKILL_SPECS = {
+    "autonomous-maintainer": {
+        "title": "Autonomous Maintainer",
+        "sections": list(range(1, 31)),
+        "max_lines": 1200,
+        "required_phrases": [
+            "Do not invoke `$autopilot` inside this skill.",
+            "Do not invoke `$ralph` inside this skill.",
+            "Do not invoke `$security-review`",
+            "blocked-user-work",
+            "resume-required",
+        ],
+        "forbidden_patterns": [],
+    },
+    "autonomous-maintainer-standalone": {
+        "title": "Autonomous Maintainer Standalone",
+        "sections": list(range(1, 25)),
+        "max_lines": 500,
+        "required_phrases": [
+            "external orchestration framework",
+            ".autonomous-maintainer/",
+            "blocked-user-work",
+            "resume-required",
+            "review_kind=self",
+            "independent read-only review",
+        ],
+        "forbidden_patterns": [
+            r"(?i)\bomx\b",
+            r"(?i)ultragoal",
+            r"\$team\b",
+            r"\$code-review\b",
+            r"\$ultraqa\b",
+            r"\$ralplan\b",
+            r"\$autopilot\b",
+            r"\$ralph\b",
+            r"\.omx/",
+        ],
+    },
 }
 
 
@@ -73,23 +111,40 @@ def validate(path: Path) -> None:
         fail("use LF line endings")
 
     frontmatter = parse_frontmatter(text)
-    if frontmatter.get("name") != EXPECTED_NAME:
-        fail(f"frontmatter name must be {EXPECTED_NAME!r}")
+    unexpected_keys = sorted(set(frontmatter) - {"name", "description"})
+    if unexpected_keys:
+        fail("unsupported frontmatter keys: " + ", ".join(unexpected_keys))
+
+    name = frontmatter.get("name", "")
+    if name not in SKILL_SPECS:
+        fail(
+            "frontmatter name must be one of: "
+            + ", ".join(sorted(SKILL_SPECS))
+        )
     if not frontmatter.get("description", "").strip():
         fail("frontmatter description must not be empty")
 
-    title_count = len(re.findall(r"(?m)^# Autonomous Maintainer\s*$", text))
+    spec = SKILL_SPECS[name]
+    title = spec["title"]
+    title_count = len(re.findall(rf"(?m)^# {re.escape(title)}\s*$", text))
     if title_count != 1:
-        fail("expected exactly one '# Autonomous Maintainer' title")
+        fail(f"expected exactly one '# {title}' title")
 
     section_numbers = [
         int(number)
         for number in re.findall(r"(?m)^##\s+(\d+)\.\s+", text)
     ]
-    if section_numbers != EXPECTED_SECTIONS:
+    if section_numbers != spec["sections"]:
         fail(
-            "numbered level-2 sections must be exactly 1 through 30 in order; "
+            "numbered level-2 sections do not match the variant contract; "
             f"found {section_numbers}"
+        )
+
+    line_count = len(text.splitlines())
+    if line_count > spec["max_lines"]:
+        fail(
+            f"{name} exceeds its {spec['max_lines']}-line context budget: "
+            f"found {line_count}"
         )
 
     fence_count = len(re.findall(r"(?m)^```", text))
@@ -109,18 +164,20 @@ def validate(path: Path) -> None:
         fail(f"Invocation Contract is missing options: {', '.join(missing_options)}")
 
     required_phrases = [
-        "Do not invoke `$autopilot` inside this skill.",
-        "Do not invoke `$ralph` inside this skill.",
-        "Do not invoke `$security-review`",
         "Never claim",
         "quiescence_scans",
         "max_epochs",
-        "blocked-user-work",
-        "resume-required",
+        *spec["required_phrases"],
     ]
     missing_phrases = [phrase for phrase in required_phrases if phrase not in text]
     if missing_phrases:
         fail("missing required safeguards: " + "; ".join(missing_phrases))
+
+    forbidden_matches = [
+        pattern for pattern in spec["forbidden_patterns"] if re.search(pattern, text)
+    ]
+    if forbidden_matches:
+        fail("forbidden variant dependencies found: " + "; ".join(forbidden_matches))
 
     placeholder_patterns = [
         r"\[Describe ",
@@ -130,7 +187,7 @@ def validate(path: Path) -> None:
     if any(re.search(pattern, text) for pattern in placeholder_patterns):
         fail("unresolved template placeholder found")
 
-    print(f"ok: {path} ({len(text.splitlines())} lines, {len(raw)} bytes)")
+    print(f"ok: {path} ({line_count} lines, {len(raw)} bytes)")
 
 
 def main() -> None:

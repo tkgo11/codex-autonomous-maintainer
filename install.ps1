@@ -1,5 +1,7 @@
 [CmdletBinding()]
 param(
+    [ValidateSet('omx', 'standalone')]
+    [string]$Variant = 'omx',
     [ValidateSet('user', 'project')]
     [string]$Scope = 'user',
     [string]$ProjectDir = '',
@@ -8,9 +10,14 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$SkillName = 'autonomous-maintainer'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$SourceFile = Join-Path $ScriptDir 'SKILL.md'
+if ($Variant -eq 'standalone') {
+    $SkillName = 'autonomous-maintainer-standalone'
+    $SourceFile = Join-Path (Join-Path $ScriptDir 'standalone') 'SKILL.md'
+} else {
+    $SkillName = 'autonomous-maintainer'
+    $SourceFile = Join-Path $ScriptDir 'SKILL.md'
+}
 
 if (-not (Test-Path -LiteralPath $SourceFile -PathType Leaf)) {
     throw "Missing source file: $SourceFile"
@@ -46,6 +53,7 @@ foreach ($Candidate in @($TargetDir, $TargetFile)) {
     }
 }
 
+Write-Host "variant:     $Variant"
 Write-Host "scope:       $Scope"
 Write-Host "source:      $SourceFile"
 Write-Host "destination: $TargetFile"
@@ -93,4 +101,4 @@ $SourceHash = (Get-FileHash -LiteralPath $SourceFile -Algorithm SHA256).Hash
 if ($InstalledHash -ne $SourceHash) { throw 'Post-install verification failed.' }
 
 Write-Host "installed:   $TargetFile"
-Write-Host 'next: restart Codex and run /skills'
+Write-Host 'next: start a new Codex session and inspect available skills'

@@ -1,6 +1,17 @@
 # Invocation examples
 
+Choose one installed variant:
+
+- `@autonomous-maintainer-standalone` uses Codex capabilities directly and requires no external orchestration framework.
+- `$autonomous-maintainer` uses the OMX workflow and helpers.
+
 ## Default aggressive apply run
+
+```text
+@autonomous-maintainer-standalone
+```
+
+or, with OMX:
 
 ```text
 $autonomous-maintainer
@@ -10,7 +21,17 @@ The default invocation is intentionally aggressive within local repository bound
 
 It still never permits push, merge, deployment, release, production mutation, destructive Git cleanup, secret handling, or overwriting unrelated user work.
 
-## Linux launch and invocation
+## Standalone invocation
+
+No separate launcher is required. From the repository you want to maintain:
+
+```text
+@autonomous-maintainer-standalone mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
+```
+
+Use `$autonomous-maintainer-standalone` instead when the Codex interface uses dollar-prefixed skill invocation.
+
+## OMX launch and invocation
 
 From the repository you want to maintain, launch OMX in an isolated worktree:
 
@@ -35,6 +56,12 @@ The `--madmax` and `--xhigh` launch flags are operator choices made outside the 
 ## Report-only audit
 
 ```text
+@autonomous-maintainer-standalone mode=report
+```
+
+or:
+
+```text
 $autonomous-maintainer mode=report
 ```
 
@@ -43,37 +70,37 @@ Builds the inventory, baseline, findings ledger, dependency graph, and plan with
 ## Correctness and security focus
 
 ```text
-$autonomous-maintainer focus=correctness,reliability,tests,security
+@autonomous-maintainer-standalone focus=correctness,reliability,tests,security
 ```
 
 ## Disable autonomous feature additions
 
 ```text
-$autonomous-maintainer feature_policy=off
+@autonomous-maintainer-standalone feature_policy=off
 ```
 
 ## Require explicit documented feature promises
 
 ```text
-$autonomous-maintainer feature_policy=documented
+@autonomous-maintainer-standalone feature_policy=documented
 ```
 
 ## Limit parallel work
 
 ```text
-$autonomous-maintainer parallelism=4
+@autonomous-maintainer-standalone parallelism=4
 ```
 
 ## Offline/local-evidence run
 
 ```text
-$autonomous-maintainer network=off
+@autonomous-maintainer-standalone network=off
 ```
 
 ## Disable local commits
 
 ```text
-$autonomous-maintainer commit=false
+@autonomous-maintainer-standalone commit=false
 ```
 
 The aggressive default is `commit=checkpoint`. This override keeps all verified changes uncommitted.
@@ -81,7 +108,7 @@ The aggressive default is `commit=checkpoint`. This override keeps all verified 
 ## Single final local commit
 
 ```text
-$autonomous-maintainer commit=final
+@autonomous-maintainer-standalone commit=final
 ```
 
 This permits at most one verified local commit after the complete final gate passes. It never permits push.
@@ -89,19 +116,19 @@ This permits at most one verified local commit after the complete final gate pas
 ## Constrained run
 
 ```text
-$autonomous-maintainer focus=correctness,tests "do not modify frontend/ or add dependencies"
+@autonomous-maintainer-standalone focus=correctness,tests "do not modify frontend/ or add dependencies"
 ```
 
 ## Resume
 
 ```text
-$autonomous-maintainer resume
+@autonomous-maintainer-standalone resume
 ```
 
 ## Convergence controls
 
 ```text
-$autonomous-maintainer max_epochs=25 quiescence_scans=2
+@autonomous-maintainer-standalone max_epochs=25 quiescence_scans=2
 ```
 
 `max_epochs` must be greater than or equal to `quiescence_scans`.
