@@ -4,7 +4,7 @@
 
 - Added `autonomous-maintainer-standalone`, a framework-independent Codex variant that has no external orchestration-skill dependency.
 - Added safe `omx` and `standalone` variant selection to the POSIX and PowerShell installers and uninstallers while preserving the existing default.
-- Added structural independence checks, installer smoke coverage, CI validation, documentation, and invocation examples for both variants.
+- Added structural independence checks, Linux and Windows installer smoke coverage, CI validation, documentation, and invocation examples for both variants.
 
 ## 1.1.0 — 2026-07-03
 

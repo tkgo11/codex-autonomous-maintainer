@@ -25,6 +25,7 @@ The variants can be installed side by side. The existing OMX variant remains the
 ├── uninstall.ps1                    # Windows PowerShell uninstaller
 ├── scripts/validate_skill.py        # Dependency-free structural validator
 ├── tests/test_installers.sh         # Both-variant installer smoke tests
+├── tests/test_installers.ps1        # Windows PowerShell installer smoke tests
 ├── examples/AGENTS.md.snippet       # Optional project policy snippet
 ├── examples/invocations.md          # Ready-to-copy invocation examples
 ├── .github/workflows/validate.yml   # CI validation
@@ -331,6 +332,7 @@ Or run the checks directly:
 python3 scripts/validate_skill.py SKILL.md
 python3 scripts/validate_skill.py standalone/SKILL.md
 bash tests/test_installers.sh
+pwsh -NoProfile -File tests/test_installers.ps1
 ```
 
 Validation also rejects external orchestration references inside the standalone variant.
