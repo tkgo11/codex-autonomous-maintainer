@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SKILL_NAME="autonomous-maintainer"
 SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_FILE="$SCRIPT_DIR/SKILL.md"
+VARIANT="omx"
 SCOPE="user"
 PROJECT_DIR=""
 FORCE=0
@@ -14,6 +13,8 @@ usage() {
 Usage: ./install.sh [options]
 
 Options:
+  --variant omx|standalone
+                         Skill variant (default: omx)
   --scope user|project   Installation scope (default: user)
   --project-dir PATH     Target repository for project scope (default: current directory)
   --force                Back up and replace a different existing installation
@@ -29,6 +30,11 @@ fail() {
 
 while (($#)); do
   case "$1" in
+    --variant)
+      (($# >= 2)) || fail "--variant requires a value"
+      VARIANT="$2"
+      shift 2
+      ;;
     --scope)
       (($# >= 2)) || fail "--scope requires a value"
       SCOPE="$2"
@@ -57,6 +63,20 @@ while (($#)); do
   esac
 done
 
+case "$VARIANT" in
+  omx)
+    SKILL_NAME="autonomous-maintainer"
+    SOURCE_FILE="$SCRIPT_DIR/SKILL.md"
+    ;;
+  standalone)
+    SKILL_NAME="autonomous-maintainer-standalone"
+    SOURCE_FILE="$SCRIPT_DIR/standalone/SKILL.md"
+    ;;
+  *)
+    fail "--variant must be omx or standalone"
+    ;;
+esac
+
 [[ "$SCOPE" == "user" || "$SCOPE" == "project" ]] || fail "--scope must be user or project"
 [[ -f "$SOURCE_FILE" ]] || fail "missing source file: $SOURCE_FILE"
 
@@ -81,14 +101,10 @@ fi
 TARGET_DIR="$TARGET_ROOT/$SKILL_NAME"
 TARGET_FILE="$TARGET_DIR/SKILL.md"
 
+printf 'variant:     %s\n' "$VARIANT"
 printf 'scope:       %s\n' "$SCOPE"
 printf 'source:      %s\n' "$SOURCE_FILE"
 printf 'destination: %s\n' "$TARGET_FILE"
-
-if [[ -f "$TARGET_FILE" ]] && cmp -s "$SOURCE_FILE" "$TARGET_FILE"; then
-  printf 'already installed and up to date\n'
-  exit 0
-fi
 
 if [[ -L "$TARGET_DIR" || -L "$TARGET_FILE" ]]; then
   fail "refusing to install through a symbolic-link destination"
@@ -96,6 +112,11 @@ fi
 
 if [[ -e "$TARGET_DIR" && ! -d "$TARGET_DIR" ]]; then
   fail "destination exists and is not a directory: $TARGET_DIR"
+fi
+
+if [[ -f "$TARGET_FILE" ]] && cmp -s "$SOURCE_FILE" "$TARGET_FILE"; then
+  printf 'already installed and up to date\n'
+  exit 0
 fi
 
 if [[ -f "$TARGET_FILE" && "$FORCE" -ne 1 ]]; then
@@ -133,4 +154,4 @@ trap - EXIT
 
 cmp -s "$SOURCE_FILE" "$TARGET_FILE" || fail "post-install verification failed"
 printf 'installed:   %s\n' "$TARGET_FILE"
-printf 'next: restart Codex and run /skills\n'
+printf 'next: start a new Codex session and inspect available skills\n'

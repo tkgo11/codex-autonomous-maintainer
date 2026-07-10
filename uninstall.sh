@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SKILL_NAME="autonomous-maintainer"
+VARIANT="omx"
 SCOPE="user"
 PROJECT_DIR=""
 DRY_RUN=0
@@ -12,6 +12,8 @@ usage() {
 Usage: ./uninstall.sh [options]
 
 Options:
+  --variant omx|standalone
+                         Skill variant (default: omx)
   --scope user|project   Installation scope (default: user)
   --project-dir PATH     Target repository for project scope (default: current directory)
   --yes                  Do not prompt for confirmation
@@ -27,6 +29,11 @@ fail() {
 
 while (($#)); do
   case "$1" in
+    --variant)
+      (($# >= 2)) || fail "--variant requires a value"
+      VARIANT="$2"
+      shift 2
+      ;;
     --scope)
       (($# >= 2)) || fail "--scope requires a value"
       SCOPE="$2"
@@ -55,6 +62,12 @@ while (($#)); do
   esac
 done
 
+case "$VARIANT" in
+  omx) SKILL_NAME="autonomous-maintainer" ;;
+  standalone) SKILL_NAME="autonomous-maintainer-standalone" ;;
+  *) fail "--variant must be omx or standalone" ;;
+esac
+
 [[ "$SCOPE" == "user" || "$SCOPE" == "project" ]] || fail "--scope must be user or project"
 
 if [[ "$SCOPE" == "user" ]]; then
@@ -68,6 +81,10 @@ fi
 
 TARGET_DIR="$TARGET_ROOT/$SKILL_NAME"
 TARGET_FILE="$TARGET_DIR/SKILL.md"
+
+if [[ -L "$TARGET_DIR" || -L "$TARGET_FILE" ]]; then
+  fail "refusing to uninstall through a symbolic-link destination"
+fi
 
 if [[ ! -f "$TARGET_FILE" ]]; then
   printf 'not installed: %s\n' "$TARGET_FILE"
