@@ -4,11 +4,13 @@
 
 - Changed both skill variants from conservative local maintenance to aggressive repository transformation.
 - Added `rewrite_policy=aggressive`, requiring systemic fixes to consider module, dependency, architecture, and whole-codebase replacement alternatives.
-- Added `compatibility=observable-output`, allowing internal implementation to change completely when public and externally observable behavior passes differential verification.
+- Added `compatibility=observable-output`, allowing internal implementation to change completely only when public and externally observable behavior passes differential verification.
 - Increased the default budget to 50 epochs and three consecutive quiescent scans.
 - Added baseline contract capture, golden and differential testing, migration-debris scans, and rewrite-specific review gates.
 - Added automatic dedicated-branch push and pull-request creation through `delivery=pull-request` with `pr_state=ready` by default.
+- Documented that aggressive transformations increase contract-capture, migration, regression, and review-surface risk; large replacements require stronger evidence, rollback, review, and verification rather than reduced safeguards.
 - Preserved prohibitions on force push, default-branch push, automatic merge, deployment, release, secret disclosure, unrelated-work overwrite, and test weakening.
+- Regenerated `CHECKSUMS.txt` for the 2.0.0 package and review-driven documentation clarifications.
 
 ## 1.2.0 — 2026-07-10
 
