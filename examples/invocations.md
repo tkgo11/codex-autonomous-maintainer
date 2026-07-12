@@ -1,122 +1,73 @@
 # Invocation examples
 
-Choose one installed variant:
+## Default aggressive transformation and automatic PR
 
-- `@autonomous-maintainer-standalone` uses Codex capabilities directly and requires no external orchestration framework.
-- `$autonomous-maintainer` uses the OMX workflow and helpers.
-
-## Default aggressive apply run
+Standalone:
 
 ```text
 @autonomous-maintainer-standalone
 ```
 
-or, with OMX:
+OMX:
 
 ```text
 $autonomous-maintainer
 ```
 
-The default invocation is intentionally aggressive within local repository boundaries. It discovers and applies every automatically eligible finding across all supported categories, uses public read-only research, creates verified local checkpoint commits, allows up to 25 implementation epochs, and requires two consecutive clean full-scope scans before convergence.
-
-It still never permits push, merge, deployment, release, production mutation, destructive Git cleanup, secret handling, or overwriting unrelated user work.
-
-## Standalone invocation
-
-No separate launcher is required. From the repository you want to maintain:
+Equivalent explicit options:
 
 ```text
-@autonomous-maintainer-standalone mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
+mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
 ```
 
-Use `$autonomous-maintainer-standalone` instead when the Codex interface uses dollar-prefixed skill invocation.
+The default may replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. Verified commits are pushed to a dedicated branch and a ready-for-review PR is created or updated automatically.
 
-## OMX launch and invocation
-
-From the repository you want to maintain, launch OMX in an isolated worktree:
-
-```bash
-omx --worktree=maintenance/autonomous --madmax --xhigh
-```
-
-Then invoke the skill inside Codex:
+## Draft PR
 
 ```text
-$autonomous-maintainer
+@autonomous-maintainer-standalone pr_state=draft
 ```
 
-The explicit equivalent is:
+## Keep work local
 
 ```text
-$autonomous-maintainer mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
+@autonomous-maintainer-standalone delivery=none
 ```
 
-The `--madmax` and `--xhigh` launch flags are operator choices made outside the skill. The skill does not enable them itself.
+## Push a branch without opening a PR
 
-## Report-only audit
+```text
+@autonomous-maintainer-standalone delivery=branch
+```
+
+## Prefer surgical changes
+
+```text
+@autonomous-maintainer-standalone rewrite_policy=surgical
+```
+
+## Preserve documented public contracts, not only outputs
+
+```text
+@autonomous-maintainer-standalone compatibility=public-contract
+```
+
+## Read-only aggressive audit
 
 ```text
 @autonomous-maintainer-standalone mode=report
 ```
 
-or:
-
-```text
-$autonomous-maintainer mode=report
-```
-
-Builds the inventory, baseline, findings ledger, dependency graph, and plan without editing implementation files or creating commits.
-
-## Correctness and security focus
-
-```text
-@autonomous-maintainer-standalone focus=correctness,reliability,tests,security
-```
-
-## Disable autonomous feature additions
+## Disable autonomous features
 
 ```text
 @autonomous-maintainer-standalone feature_policy=off
 ```
 
-## Require explicit documented feature promises
-
-```text
-@autonomous-maintainer-standalone feature_policy=documented
-```
-
-## Limit parallel work
-
-```text
-@autonomous-maintainer-standalone parallelism=4
-```
-
-## Offline/local-evidence run
-
-```text
-@autonomous-maintainer-standalone network=off
-```
-
-## Disable local commits
-
-```text
-@autonomous-maintainer-standalone commit=false
-```
-
-The aggressive default is `commit=checkpoint`. This override keeps all verified changes uncommitted.
-
-## Single final local commit
-
-```text
-@autonomous-maintainer-standalone commit=final
-```
-
-This permits at most one verified local commit after the complete final gate passes. It never permits push.
-
 ## Constrained run
 
 ```text
-@autonomous-maintainer-standalone focus=correctness,tests "do not modify frontend/ or add dependencies"
+@autonomous-maintainer-standalone "do not modify frontend/ or add runtime dependencies"
 ```
 
 ## Resume
@@ -125,32 +76,20 @@ This permits at most one verified local commit after the complete final gate pas
 @autonomous-maintainer-standalone resume
 ```
 
-## Convergence controls
-
-```text
-@autonomous-maintainer-standalone max_epochs=25 quiescence_scans=2
-```
-
-`max_epochs` must be greater than or equal to `quiescence_scans`.
-
 ## Supported options
 
 | Option | Values | Default |
 |---|---|---|
 | `mode` | `apply`, `report` | `apply` |
-| `focus` | `all` or comma-separated categories | `all` |
+| `focus` | `all` or categories | `all` |
 | `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` |
 | `resume` | `true`, `false` | `true` |
 | `commit` | `false`, `checkpoint`, `final` | `checkpoint` |
-| `max_epochs` | `1..50` | `25` |
-| `quiescence_scans` | `1..5` | `2` |
-| `parallelism` | `auto`, `1..16` | `auto` |
+| `max_epochs` | `1..100` | `50` |
+| `quiescence_scans` | `1..10` | `3` |
+| `parallelism` | `auto`, `1..32` | `auto` |
 | `network` | `off`, `public-read` | `public-read` |
-
-Valid focus categories:
-
-```text
-correctness, reliability, tests, security, maintainability,
-documentation, developer-experience, performance, features,
-dependencies, compatibility
-```
+| `rewrite_policy` | `surgical`, `allow`, `aggressive` | `aggressive` |
+| `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` |
+| `delivery` | `none`, `branch`, `pull-request` | `pull-request` |
+| `pr_state` | `draft`, `ready` | `ready` |
