@@ -1,0 +1,265 @@
+# Instincts generated from https://github.com/tkgo11/autonomous-maintainer-skill
+# Generated: 2026-07-12T02:57:55.491Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: autonomous-maintainer-skill-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Commit Length
+
+## Action
+
+Write moderate-length commit messages (~53 characters)
+
+## Evidence
+
+- Average commit message length: 53 chars
+- Based on 3 commits
+
+---
+id: autonomous-maintainer-skill-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: autonomous-maintainer-skill-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: autonomous-maintainer-skill-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: autonomous-maintainer-skill-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: autonomous-maintainer-skill-workflow-policy-documentation-update
+trigger: "when doing policy documentation update"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Workflow Policy Documentation Update
+
+## Action
+
+Follow the policy-documentation-update workflow:
+1. Edit SKILL.md or standalone/SKILL.md to update policy language.
+2. Commit changes with a message referencing policy or discovery rewrites.
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: SKILL.md, standalone/SKILL.md
+
+---
+id: autonomous-maintainer-skill-instinct-naming-conventions
+trigger: "When creating or renaming files, functions, classes, or constants in TypeScript code"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Instinct Naming Conventions
+
+## Action
+
+Use PascalCase for files and classes, camelCase for functions, and SCREAMING_SNAKE_CASE for constants
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions
+- Consistent naming in commit examples
+
+---
+id: autonomous-maintainer-skill-instinct-import-style
+trigger: "When importing modules in TypeScript files"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: autonomous-maintainer-skill-instinct-export-style
+trigger: "When exporting functions, classes, or constants"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: autonomous-maintainer-skill-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.7
+domain: testing
+source: repo-analysis
+source_repo: tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Instinct Test Location
+
+## Action
+
+Place test files in a separate directory from source files
+
+## Evidence
+
+- Pattern in architecture.testLocation
+
+---
+id: autonomous-maintainer-skill-instinct-standalone-folder-tests
+trigger: "When writing tests for standalone features"
+confidence: 0.6
+domain: testing
+source: repo-analysis
+source_repo: tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Instinct Standalone Folder Tests
+
+## Action
+
+Place tests related to standalone features in or referencing the 'standalone' folder
+
+## Evidence
+
+- Pattern in architecture.commonFolders
+
+---
+id: autonomous-maintainer-skill-instinct-commit-format
+trigger: "When writing a commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Instinct Commit Format
+
+## Action
+
+Write a concise, imperative message averaging ~53 characters, often referencing policy, discovery, or rewrites
+
+## Evidence
+
+- Pattern in commits.averageLength
+- Examples: 'Strengthen exhaustive discovery and rewrite policy'
+
+---
+id: autonomous-maintainer-skill-instinct-policy-doc-update
+trigger: "When updating or rewriting policy documentation"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: tkgo11/autonomous-maintainer-skill
+---
+
+# Autonomous Maintainer Skill Instinct Policy Doc Update
+
+## Action
+
+Edit SKILL.md or standalone/SKILL.md and commit with a message referencing policy or discovery rewrites
+
+## Evidence
+
+- Detected workflow: policy-documentation-update
+- Commit examples referencing policy/discovery rewrites
+
