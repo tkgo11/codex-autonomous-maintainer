@@ -18,19 +18,35 @@ REQUIRED_OPTIONS = {
     "quiescence_scans",
     "parallelism",
     "network",
+    "rewrite_policy",
+    "compatibility",
+    "delivery",
+    "pr_state",
 }
+
+COMMON_REQUIRED = [
+    "Never claim",
+    "quiescence_scans",
+    "max_epochs",
+    "rewrite_policy=aggressive",
+    "compatibility=observable-output",
+    "delivery=pull-request",
+    "observable-output",
+    "pull request",
+    "blocked-user-work",
+    "resume-required",
+]
 
 SKILL_SPECS = {
     "autonomous-maintainer": {
         "title": "Autonomous Maintainer",
         "sections": list(range(1, 31)),
-        "max_lines": 1200,
+        "max_lines": 1000,
         "required_phrases": [
             "Do not invoke `$autopilot` inside this skill.",
             "Do not invoke `$ralph` inside this skill.",
             "Do not invoke `$security-review`",
-            "blocked-user-work",
-            "resume-required",
+            "Never merge the PR automatically.",
         ],
         "forbidden_patterns": [],
     },
@@ -41,10 +57,9 @@ SKILL_SPECS = {
         "required_phrases": [
             "external orchestration framework",
             ".autonomous-maintainer/",
-            "blocked-user-work",
-            "resume-required",
             "review_kind=self",
             "independent read-only review",
+            "Never merge it automatically.",
         ],
         "forbidden_patterns": [
             r"(?i)\bomx\b",
@@ -70,7 +85,6 @@ def parse_frontmatter(text: str) -> dict[str, str]:
     lines = text.splitlines()
     if not lines or lines[0] != "---":
         fail("the first line must be the YAML frontmatter delimiter '---'")
-
     try:
         end = lines.index("---", 1)
     except ValueError:
@@ -101,12 +115,10 @@ def validate(path: Path) -> None:
 
     if raw.startswith(b"\xef\xbb\xbf"):
         fail("UTF-8 BOM is not allowed before frontmatter")
-
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError as exc:
         fail(f"file is not valid UTF-8: {exc}")
-
     if "\r\n" in text:
         fail("use LF line endings")
 
@@ -114,42 +126,28 @@ def validate(path: Path) -> None:
     unexpected_keys = sorted(set(frontmatter) - {"name", "description"})
     if unexpected_keys:
         fail("unsupported frontmatter keys: " + ", ".join(unexpected_keys))
-
     name = frontmatter.get("name", "")
     if name not in SKILL_SPECS:
-        fail(
-            "frontmatter name must be one of: "
-            + ", ".join(sorted(SKILL_SPECS))
-        )
+        fail("unknown skill name")
     if not frontmatter.get("description", "").strip():
         fail("frontmatter description must not be empty")
 
     spec = SKILL_SPECS[name]
     title = spec["title"]
-    title_count = len(re.findall(rf"(?m)^# {re.escape(title)}\s*$", text))
-    if title_count != 1:
+    if len(re.findall(rf"(?m)^# {re.escape(title)}\s*$", text)) != 1:
         fail(f"expected exactly one '# {title}' title")
 
     section_numbers = [
-        int(number)
-        for number in re.findall(r"(?m)^##\s+(\d+)\.\s+", text)
+        int(number) for number in re.findall(r"(?m)^##\s+(\d+)\.\s+", text)
     ]
     if section_numbers != spec["sections"]:
-        fail(
-            "numbered level-2 sections do not match the variant contract; "
-            f"found {section_numbers}"
-        )
+        fail(f"numbered sections do not match contract: {section_numbers}")
 
     line_count = len(text.splitlines())
     if line_count > spec["max_lines"]:
-        fail(
-            f"{name} exceeds its {spec['max_lines']}-line context budget: "
-            f"found {line_count}"
-        )
-
-    fence_count = len(re.findall(r"(?m)^```", text))
-    if fence_count % 2 != 0:
-        fail(f"unbalanced fenced code blocks: found {fence_count} delimiters")
+        fail(f"{name} exceeds {spec['max_lines']} lines: {line_count}")
+    if len(re.findall(r"(?m)^```", text)) % 2:
+        fail("unbalanced fenced code blocks")
 
     invocation_match = re.search(
         r"(?ms)^## 3\. Invocation Contract\s*(.*?)(?=^## 4\.)", text
@@ -161,30 +159,23 @@ def validate(path: Path) -> None:
         option for option in REQUIRED_OPTIONS if f"`{option}`" not in invocation
     )
     if missing_options:
-        fail(f"Invocation Contract is missing options: {', '.join(missing_options)}")
+        fail("Invocation Contract is missing options: " + ", ".join(missing_options))
 
-    required_phrases = [
-        "Never claim",
-        "quiescence_scans",
-        "max_epochs",
-        *spec["required_phrases"],
-    ]
-    missing_phrases = [phrase for phrase in required_phrases if phrase not in text]
+    required = [*COMMON_REQUIRED, *spec["required_phrases"]]
+    missing_phrases = [phrase for phrase in required if phrase not in text]
     if missing_phrases:
         fail("missing required safeguards: " + "; ".join(missing_phrases))
 
-    forbidden_matches = [
+    forbidden = [
         pattern for pattern in spec["forbidden_patterns"] if re.search(pattern, text)
     ]
-    if forbidden_matches:
-        fail("forbidden variant dependencies found: " + "; ".join(forbidden_matches))
+    if forbidden:
+        fail("forbidden standalone dependencies found: " + "; ".join(forbidden))
 
-    placeholder_patterns = [
-        r"\[Describe ",
-        r"\[Specific action",
-        r"(?m)^\s*(?:TODO|TBD)(?:[:\s]|$)",
-    ]
-    if any(re.search(pattern, text) for pattern in placeholder_patterns):
+    if any(
+        re.search(pattern, text)
+        for pattern in [r"\[Describe ", r"\[Specific action", r"(?m)^\s*(?:TODO|TBD)(?:[:\s]|$)"]
+    ):
         fail("unresolved template placeholder found")
 
     print(f"ok: {path} ({line_count} lines, {len(raw)} bytes)")

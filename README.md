@@ -1,112 +1,66 @@
 # Autonomous Maintainer Skills for Codex
 
-Evidence-driven, resumable repository-maintenance skills that discover material defects and strongly evidenced gaps, apply every safe and objectively verifiable finding, review the result, run applicable adversarial QA, and repeat full-scope scans until a guarded fixed point or documented blocker is reached.
+Two repository-wide maintenance skills that aggressively discover and apply verifiable improvements, allow large refactors or complete rewrites when accepted observable behavior remains equivalent, and automatically deliver verified work through a dedicated branch and pull request.
 
-This repository provides two installable variants:
+| Variant | Skill | Runtime |
+|---|---|---|
+| Standalone | `autonomous-maintainer-standalone` | Codex, Git, and repository tools |
+| OMX | `autonomous-maintainer` | Codex plus Oh My Codex |
 
-| Variant | Skill name | Extra runtime requirement | Best for |
-|---|---|---|---|
-| Standalone | `autonomous-maintainer-standalone` | None beyond Codex, Git, and repository tools | Standard Codex environments and the simplest setup |
-| OMX | `autonomous-maintainer` | [Oh My Codex (OMX)](https://github.com/Yeachan-Heo/oh-my-codex) | Users who want OMX goals, team workflows, and specialized review helpers |
+## New default behavior in 2.0
 
-The variants can be installed side by side. The existing OMX variant remains the installer default for backward compatibility.
-
-> These are independent custom skills. They are not part of the official Codex or OMX distributions.
-
-## What is included
+The default profile now uses:
 
 ```text
-.
-├── SKILL.md                         # OMX variant
-├── standalone/SKILL.md              # Framework-independent Codex variant
-├── install.sh                       # macOS/Linux installer
-├── install.ps1                      # Windows PowerShell installer
-├── uninstall.sh                     # macOS/Linux uninstaller
-├── uninstall.ps1                    # Windows PowerShell uninstaller
-├── scripts/validate_skill.py        # Dependency-free structural validator
-├── tests/test_installers.sh         # Both-variant installer smoke tests
-├── tests/test_installers.ps1        # Windows PowerShell installer smoke tests
-├── examples/AGENTS.md.snippet       # Optional project policy snippet
-├── examples/invocations.md          # Ready-to-copy invocation examples
-├── .github/workflows/validate.yml   # CI validation
-└── Makefile                         # Common local commands
+mode=apply
+focus=all
+feature_policy=strong-evidence
+resume=true
+commit=checkpoint
+max_epochs=50
+quiescence_scans=3
+parallelism=auto
+network=public-read
+rewrite_policy=aggressive
+compatibility=observable-output
+delivery=pull-request
+pr_state=ready
 ```
 
-## Prerequisites
+“Aggressive” means exhaustive search and active comparison of large replacement alternatives; it does not mean accepting unverified changes. Every selected transformation must still preserve the chosen compatibility contract and pass the applicable verification, review, rollback, and delivery gates.
 
-### Standalone variant
+This means the maintainer:
 
-- OpenAI Codex with local repository access
-- Git
-- the build, test, and analysis tools already declared by the target repository
+- searches every supported category and continues after the first fixes;
+- considers module replacement, dependency removal, architecture migration, and whole-codebase rewrites;
+- treats internal implementation as replaceable when public and observable behavior remains equivalent;
+- captures baseline behavior and uses differential, golden, contract, property, compatibility, and performance checks as applicable;
+- commits verified waves to a dedicated `autonomous-maintainer/<run-id>-<slug>` branch;
+- pushes that branch and creates or updates a pull request automatically after verification;
+- never force-pushes, pushes to the default branch, merges the PR, deploys, releases, exposes secrets, overwrites unrelated work, or weakens valid tests.
 
-No OMX command, goal runtime, tmux session, or third-party orchestration skill is required. Native Codex delegation is optional; the skill falls back to sequential discovery and clearly labeled self-review when it is unavailable. High-risk work still requires independent review or remains blocked.
+## Risks and safeguards
 
-### OMX variant
+Aggressive transformations can expose incomplete contracts, change undocumented behavior, increase migration complexity, or produce a large review surface. The default workflow mitigates these risks by capturing observable behavior before replacement, strengthening contract tests, comparing baseline and candidate outputs, requiring independent review for high-risk work, retaining candidate-specific rollback evidence, and running three clean repository-wide rescans.
 
-The recommended OMX path is macOS or Linux with OpenAI Codex CLI:
+Automatic delivery is limited to a dedicated run branch and a pull request. It does not push to the default branch or merge the PR. Delivery is skipped or marked blocked when repository identity, write permission, secret scanning, verification, branch safety, or PR-target checks fail. Use `pr_state=draft` for additional human review or `delivery=none` to keep all work local.
 
-```bash
-codex --version
-npm install -g oh-my-codex
-omx setup --scope user
-omx doctor
-```
+## Install
 
-For project-level OMX guidance, run this from the target repository:
-
-```bash
-omx setup --scope project --merge-agents
-omx doctor
-```
-
-## Quick install
-
-Clone the repository once:
+Clone the repository:
 
 ```bash
 git clone https://github.com/tkgo11/autonomous-maintainer-skill.git
 cd autonomous-maintainer-skill
 ```
 
-### Standalone — macOS or Linux
-
-User scope:
+Standalone, user scope:
 
 ```bash
 bash ./install.sh --variant standalone --scope user
 ```
 
-Project scope:
-
-```bash
-bash ./install.sh --variant standalone --scope project --project-dir /path/to/target-repository
-```
-
-Destinations:
-
-```text
-${CODEX_HOME:-$HOME/.codex}/skills/autonomous-maintainer-standalone/SKILL.md
-/path/to/target-repository/.codex/skills/autonomous-maintainer-standalone/SKILL.md
-```
-
-### Standalone — Windows PowerShell
-
-User scope:
-
-```powershell
-.\install.ps1 -Variant standalone -Scope user
-```
-
-Project scope:
-
-```powershell
-.\install.ps1 -Variant standalone -Scope project -ProjectDir C:\path\to\target-repository
-```
-
-### OMX — macOS or Linux
-
-User scope:
+OMX, user scope:
 
 ```bash
 bash ./install.sh --variant omx --scope user
@@ -115,209 +69,48 @@ bash ./install.sh --variant omx --scope user
 Project scope:
 
 ```bash
-bash ./install.sh --variant omx --scope project --project-dir /path/to/target-repository
+bash ./install.sh --variant standalone --scope project --project-dir /path/to/repository
+bash ./install.sh --variant omx --scope project --project-dir /path/to/repository
 ```
 
-`--variant omx` may be omitted because it is the default.
+PowerShell uses the equivalent `install.ps1` arguments.
 
-### OMX — Windows PowerShell
+## Invoke
 
-```powershell
-.\install.ps1 -Variant omx -Scope user
-.\install.ps1 -Variant omx -Scope project -ProjectDir C:\path\to\target-repository
-```
-
-## Manual install
-
-Only the selected `SKILL.md` is required at runtime.
-
-| Variant | Source | Destination directory |
-|---|---|---|
-| Standalone | `standalone/SKILL.md` | `autonomous-maintainer-standalone` |
-| OMX | `SKILL.md` | `autonomous-maintainer` |
-
-Validate either source before copying:
-
-```bash
-python3 scripts/validate_skill.py standalone/SKILL.md
-python3 scripts/validate_skill.py SKILL.md
-```
-
-Standalone user-scope example for macOS or Linux:
-
-```bash
-destination="${CODEX_HOME:-$HOME/.codex}/skills/autonomous-maintainer-standalone"
-mkdir -p "$destination"
-cp ./standalone/SKILL.md "$destination/SKILL.md"
-cmp -s ./standalone/SKILL.md "$destination/SKILL.md"
-```
-
-OMX user-scope example:
-
-```bash
-destination="${CODEX_HOME:-$HOME/.codex}/skills/autonomous-maintainer"
-mkdir -p "$destination"
-cp ./SKILL.md "$destination/SKILL.md"
-cmp -s ./SKILL.md "$destination/SKILL.md"
-```
-
-For project scope, use the same variant-specific directory below the target repository's `.codex/skills/` directory.
-
-## Installer safety behavior
-
-The installers:
-
-- validate the selected variant before copying when Python 3 is available;
-- install the two variants to different skill directories so they can coexist;
-- refuse to overwrite a different existing installation by default;
-- exit successfully when the installed file is already identical;
-- create a timestamped backup only when `--force` or `-Force` is explicitly supplied;
-- write through a temporary file before replacing the destination;
-- reject symbolic-link or reparse-point destinations;
-- support dry-run mode;
-- do not modify `AGENTS.md`, Codex configuration, Git state, or runtime state.
-
-Examples:
-
-```bash
-bash ./install.sh --variant standalone --scope user --dry-run
-bash ./install.sh --variant standalone --scope user --force
-bash ./install.sh --variant omx --scope project --project-dir "$PWD" --force
-```
-
-```powershell
-.\install.ps1 -Variant standalone -Scope user -DryRun
-.\install.ps1 -Variant standalone -Scope user -Force
-```
-
-## Usage
-
-### Standalone
-
-Invoke it directly in the repository to maintain:
+Standalone:
 
 ```text
 @autonomous-maintainer-standalone
 ```
 
-Codex interfaces that use dollar-prefixed skill invocation can use:
-
-```text
-$autonomous-maintainer-standalone
-```
-
-The explicit aggressive profile is:
-
-```text
-@autonomous-maintainer-standalone mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=25 quiescence_scans=2 parallelism=auto network=public-read
-```
-
-No separate launcher or setup command is needed. The skill keeps resumable state in `.autonomous-maintainer/`, uses native delegation only when available, and otherwise runs discovery sequentially.
-
-### OMX
-
-Recommended launch sequence from the repository to maintain:
-
-```bash
-omx setup --scope project --merge-agents
-omx doctor
-omx --worktree=maintenance/autonomous --madmax --xhigh
-```
-
-Then invoke:
+OMX:
 
 ```text
 $autonomous-maintainer
 ```
 
-Launch flags remain an operator decision. The skill does not enable approval bypasses, push, merge, deployment, or release.
-
-### Common examples
-
-Report-only audit:
+The explicit default invocation is:
 
 ```text
-@autonomous-maintainer-standalone mode=report
-$autonomous-maintainer mode=report
+mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
 ```
 
-Focused maintenance:
+Useful overrides:
 
 ```text
-@autonomous-maintainer-standalone focus=correctness,security,tests
+mode=report                         # read-only audit and transformation plan
+rewrite_policy=surgical             # prefer localized changes
+delivery=none                       # do not push or create a PR
+pr_state=draft                      # create a draft PR
+compatibility=public-contract       # preserve all documented public contracts
+feature_policy=off                  # do not add missing features
 ```
 
-Project constraint:
+## Observable-output compatibility
 
-```text
-@autonomous-maintainer-standalone "do not touch the frontend or add dependencies"
-```
+With the default `compatibility=observable-output`, private implementation, architecture, algorithms, dependencies, and file layout may change. The skill must preserve supported externally observable effects such as public API values and errors, CLI output and exit codes, serialization, emitted files, database effects, documented network behavior, UI-visible semantics, concurrency/cancellation/retry guarantees, and required performance ceilings.
 
-Resume durable state:
-
-```text
-@autonomous-maintainer-standalone resume
-```
-
-## Supported options
-
-Both variants share the same public option contract:
-
-| Option | Values | Default |
-|---|---|---|
-| `mode` | `apply`, `report` | `apply` |
-| `focus` | `all` or comma-separated categories | `all` |
-| `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` |
-| `resume` | `true`, `false` | `true` |
-| `commit` | `false`, `checkpoint`, `final` | `checkpoint` |
-| `max_epochs` | `1..50` | `25` |
-| `quiescence_scans` | `1..5` | `2` |
-| `parallelism` | `auto`, `1..16` | `auto` |
-| `network` | `off`, `public-read` | `public-read` |
-
-Valid focus categories:
-
-```text
-correctness, reliability, tests, security, maintainability,
-documentation, developer-experience, performance, features,
-dependencies, compatibility
-```
-
-The default creates verified local checkpoint commits and performs repeated repository-wide scans. Neither variant ever interprets a commit option as permission to push.
-
-## Optional project policy
-
-The skills contain their own activation and safety rules. Teams that want an additional repository-level reminder may merge [`examples/AGENTS.md.snippet`](examples/AGENTS.md.snippet) into an existing `AGENTS.md`. Do not replace existing project guidance wholesale.
-
-## Updating
-
-```bash
-git pull --ff-only
-bash ./install.sh --variant standalone --scope user --force
-bash ./install.sh --variant omx --scope user --force
-```
-
-Install only the variants you use. A forced update backs up a different installed file before replacement.
-
-## Uninstall
-
-macOS or Linux:
-
-```bash
-bash ./uninstall.sh --variant standalone --scope user --yes
-bash ./uninstall.sh --variant omx --scope user --yes
-bash ./uninstall.sh --variant standalone --scope project --project-dir /path/to/repository --yes
-```
-
-Windows PowerShell:
-
-```powershell
-.\uninstall.ps1 -Variant standalone -Scope user
-.\uninstall.ps1 -Variant omx -Scope user
-.\uninstall.ps1 -Variant standalone -Scope project -ProjectDir C:\path\to\repository
-```
-
-Uninstallers verify the expected skill name and remove only the selected installed `SKILL.md`. They preserve backups and unexpected files.
+The maintainer must record the comparison corpus and cannot treat missing, skipped, flaky, timed-out, or failed checks as proof of equivalence. Unsupported output differences reopen a finding instead of being normalized away.
 
 ## Development
 
@@ -326,30 +119,11 @@ make validate
 make test
 ```
 
-Or run the checks directly:
+Direct validation:
 
 ```bash
 python3 scripts/validate_skill.py SKILL.md
 python3 scripts/validate_skill.py standalone/SKILL.md
-bash tests/test_installers.sh
-pwsh -NoProfile -File tests/test_installers.ps1
 ```
 
-Validation also rejects external orchestration references inside the standalone variant.
-
-## Important limitations
-
-- No prompt or skill can guarantee that an externally terminated process continues running; both variants use durable state to support an honest resume.
-- Repository-wide discovery is bounded by available tools, declared scope, objective evidence, and safety constraints.
-- The standalone variant cannot manufacture independent review when native delegation is unavailable. It records self-review for low-risk work and blocks high-risk work that requires independence.
-- Both variants forbid remote mutation, push, merge, deployment, release, destructive Git operations, secret handling, and speculative product invention.
-
-## Upstream references
-
-- [OpenAI Codex](https://github.com/openai/codex)
-- [Official Oh My Codex repository](https://github.com/Yeachan-Heo/oh-my-codex)
-- [OMX skills documentation](https://oh-my-codex.dev/docs/skills.html)
-
-## License
-
-No license has been selected yet. Until a license is added, standard copyright restrictions apply.
+Only the selected `SKILL.md` is required at runtime. The installers keep the two variants in separate skill directories so they may coexist.
