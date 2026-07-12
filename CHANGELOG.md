@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.0 — 2026-07-12
+
+- Changed both skill variants from conservative local maintenance to aggressive repository transformation.
+- Added `rewrite_policy=aggressive`, requiring systemic fixes to consider module, dependency, architecture, and whole-codebase replacement alternatives.
+- Added `compatibility=observable-output`, allowing internal implementation to change completely when public and externally observable behavior passes differential verification.
+- Increased the default budget to 50 epochs and three consecutive quiescent scans.
+- Added baseline contract capture, golden and differential testing, migration-debris scans, and rewrite-specific review gates.
+- Added automatic dedicated-branch push and pull-request creation through `delivery=pull-request` with `pr_state=ready` by default.
+- Preserved prohibitions on force push, default-branch push, automatic merge, deployment, release, secret disclosure, unrelated-work overwrite, and test weakening.
+
 ## 1.2.0 — 2026-07-10
 
 - Added `autonomous-maintainer-standalone`, a framework-independent Codex variant that has no external orchestration-skill dependency.
