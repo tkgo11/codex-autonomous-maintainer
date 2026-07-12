@@ -27,6 +27,8 @@ delivery=pull-request
 pr_state=ready
 ```
 
+“Aggressive” means exhaustive search and active comparison of large replacement alternatives; it does not mean accepting unverified changes. Every selected transformation must still preserve the chosen compatibility contract and pass the applicable verification, review, rollback, and delivery gates.
+
 This means the maintainer:
 
 - searches every supported category and continues after the first fixes;
@@ -36,6 +38,12 @@ This means the maintainer:
 - commits verified waves to a dedicated `autonomous-maintainer/<run-id>-<slug>` branch;
 - pushes that branch and creates or updates a pull request automatically after verification;
 - never force-pushes, pushes to the default branch, merges the PR, deploys, releases, exposes secrets, overwrites unrelated work, or weakens valid tests.
+
+## Risks and safeguards
+
+Aggressive transformations can expose incomplete contracts, change undocumented behavior, increase migration complexity, or produce a large review surface. The default workflow mitigates these risks by capturing observable behavior before replacement, strengthening contract tests, comparing baseline and candidate outputs, requiring independent review for high-risk work, retaining candidate-specific rollback evidence, and running three clean repository-wide rescans.
+
+Automatic delivery is limited to a dedicated run branch and a pull request. It does not push to the default branch or merge the PR. Delivery is skipped or marked blocked when repository identity, write permission, secret scanning, verification, branch safety, or PR-target checks fail. Use `pr_state=draft` for additional human review or `delivery=none` to keep all work local.
 
 ## Install
 
@@ -101,6 +109,8 @@ feature_policy=off                  # do not add missing features
 ## Observable-output compatibility
 
 With the default `compatibility=observable-output`, private implementation, architecture, algorithms, dependencies, and file layout may change. The skill must preserve supported externally observable effects such as public API values and errors, CLI output and exit codes, serialization, emitted files, database effects, documented network behavior, UI-visible semantics, concurrency/cancellation/retry guarantees, and required performance ceilings.
+
+The maintainer must record the comparison corpus and cannot treat missing, skipped, flaky, timed-out, or failed checks as proof of equivalence. Unsupported output differences reopen a finding instead of being normalized away.
 
 ## Development
 
