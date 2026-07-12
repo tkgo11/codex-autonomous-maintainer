@@ -22,6 +22,8 @@ mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoin
 
 The default may replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. Verified commits are pushed to a dedicated branch and a ready-for-review PR is created or updated automatically. It never merges the PR.
 
+Use this default only when broad autonomous changes and automatic PR delivery are intended. Start with `mode=report`, `rewrite_policy=surgical`, `pr_state=draft`, or `delivery=none` when the repository contract or desired scope is uncertain.
+
 ## Draft PR
 
 ```text
