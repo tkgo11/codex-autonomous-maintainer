@@ -20,7 +20,7 @@ Equivalent explicit options:
 mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
 ```
 
-The default may replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. Verified commits are pushed to a dedicated branch and a ready-for-review PR is created or updated automatically.
+The default may replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. Verified commits are pushed to a dedicated branch and a ready-for-review PR is created or updated automatically. It never merges the PR.
 
 ## Draft PR
 
@@ -69,6 +69,28 @@ The default may replace modules, dependencies, architecture, or the entire imple
 ```text
 @autonomous-maintainer-standalone "do not modify frontend/ or add runtime dependencies"
 ```
+
+## Require a draft PR for architecture replacement
+
+```text
+@autonomous-maintainer-standalone rewrite_policy=aggressive pr_state=draft "preserve the documented CLI and persisted file formats"
+```
+
+## Handle missing verification prerequisites
+
+```text
+@autonomous-maintainer-standalone "do not install undeclared tools; record missing test runtimes as blocked-environment"
+```
+
+A missing compiler, test fixture, credential, or service does not become a pass. The run records the exact blocked evidence and delivers only independently verified work when safe.
+
+## Prevent delivery when origin or permissions are wrong
+
+```text
+@autonomous-maintainer-standalone delivery=pull-request "do not create a fork or use a different remote when origin validation or write permission fails"
+```
+
+The run stops the delivery phase rather than pushing elsewhere, force-pushing, or targeting the default branch directly.
 
 ## Resume
 
