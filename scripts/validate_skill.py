@@ -123,8 +123,9 @@ def validate(path: Path) -> None:
         fail("use LF line endings")
 
     frontmatter = parse_frontmatter(text)
-    if sorted(set(frontmatter) - {"name", "description"}):
-        fail("unsupported frontmatter keys")
+    unexpected_keys = sorted(set(frontmatter) - {"name", "description"})
+    if unexpected_keys:
+        fail("unsupported frontmatter keys: " + ", ".join(unexpected_keys))
     name = frontmatter.get("name", "")
     if name not in SKILL_SPECS:
         fail("unknown skill name")
