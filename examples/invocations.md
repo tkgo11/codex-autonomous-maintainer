@@ -17,10 +17,10 @@ $autonomous-maintainer
 Equivalent explicit options:
 
 ```text
-mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
+mode=apply focus=all feature_policy=proactive resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
 ```
 
-The default may replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. Verified commits are pushed to a dedicated branch and a ready-for-review PR is created or updated automatically. It never merges the PR.
+The default proactively originates and implements repository-aligned features that pass its evidence, acceptance, compatibility, verification, and rollback gates. It may also replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. Verified commits are pushed to a dedicated branch and a ready-for-review PR is created or updated automatically. It never merges the PR.
 
 Use this default only when broad autonomous changes and automatic PR delivery are intended. Start with `mode=report`, `rewrite_policy=surgical`, `pr_state=draft`, or `delivery=none` when the repository contract or desired scope is uncertain.
 
@@ -66,6 +66,14 @@ Use this default only when broad autonomous changes and automatic PR delivery ar
 @autonomous-maintainer-standalone feature_policy=off
 ```
 
+## Limit features to existing evidence
+
+```text
+@autonomous-maintainer-standalone feature_policy=strong-evidence
+```
+
+Use `feature_policy=documented` for only explicitly promised behavior. The default `proactive` policy may originate new features, but only with repository-alignment evidence, an independent user-value or demand signal, and testable acceptance criteria.
+
 ## Constrained run
 
 ```text
@@ -106,7 +114,7 @@ The run stops the delivery phase rather than pushing elsewhere, force-pushing, o
 |---|---|---|
 | `mode` | `apply`, `report` | `apply` |
 | `focus` | `all` or categories | `all` |
-| `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` |
+| `feature_policy` | `off`, `documented`, `strong-evidence`, `proactive` | `proactive` |
 | `resume` | `true`, `false` | `true` |
 | `commit` | `false`, `checkpoint`, `final` | `checkpoint` |
 | `max_epochs` | `1..100` | `50` |

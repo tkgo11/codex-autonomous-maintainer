@@ -26,6 +26,8 @@ REQUIRED_OPTIONS = {
 
 COMMON_REQUIRED = [
     "Never claim",
+    "feature_policy=proactive",
+    "| `feature_policy` | `off`, `documented`, `strong-evidence`, `proactive` | `proactive` |",
     "quiescence_scans",
     "max_epochs",
     "rewrite_policy=aggressive",

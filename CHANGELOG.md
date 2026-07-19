@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.0 — 2026-07-19
+
+- Added `feature_policy=proactive` and made it the default for both OMX and standalone variants.
+- Changed repository-wide runs to originate and implement verified repository-aligned features instead of limiting additions to behavior already promised by accepted sources.
+- Added feature evidence requirements, acceptance contracts, compatibility rules for existing inputs, security and privacy review, documentation, verification, rollout, and rollback gates.
+- Retained `strong-evidence`, `documented`, and `off` policies as progressively narrower overrides.
+- Updated validation, documentation, examples, version metadata, and package checksums for the new default.
+
 ## 2.0.0 — 2026-07-12
 
 - Changed both skill variants from conservative local maintenance to aggressive repository transformation.
