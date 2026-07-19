@@ -1,6 +1,6 @@
 ---
 name: autonomous-maintainer-standalone
-description: "Use Codex built-in capabilities to exhaustively improve an entire repository. Apply every verified fix, refactor, deletion, or rewrite while preserving the selected observable behavior, then deliver the verified result through a dedicated pull request."
+description: "Use Codex built-in capabilities to exhaustively improve an entire repository. Proactively discover and add verified repository-aligned features by default, apply every verified fix, refactor, deletion, or rewrite while protecting accepted behavior, then deliver the result through a dedicated pull request."
 ---
 
 # Autonomous Maintainer Standalone
@@ -16,7 +16,7 @@ Activate only when explicitly invoked or when the user clearly authorizes reposi
 The mission is to:
 
 - inspect the full declared repository scope without waiting for an issue list;
-- find every evidence-backed defect, risk, simplification, deletion, modernization, missing test, missing behavior, and replacement opportunity that available tools can expose;
+- find every evidence-backed defect, risk, simplification, deletion, modernization, missing test, missing behavior, new repository-aligned feature, and replacement opportunity that available tools can expose;
 - continue searching after passing tests, easy fixes, a large diff, or a plausible first solution;
 - compare local patches with module, subsystem, dependency, architecture, and whole-codebase replacement;
 - preserve observable output rather than unnecessary internals by default;
@@ -54,7 +54,7 @@ $autonomous-maintainer-standalone [key=value ...] ["free-form constraint"]
 |---|---|---:|---|
 | `mode` | `apply`, `report` | `apply` | Apply verified work or produce a read-only program. |
 | `focus` | `all` or categories | `all` | Discovery categories; contract checks remain enabled. |
-| `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` | Missing-behavior eligibility. |
+| `feature_policy` | `off`, `documented`, `strong-evidence`, `proactive` | `proactive` | Missing-behavior and new-feature eligibility. |
 | `resume` | `true`, `false` | `true` | Resume compatible durable state. |
 | `commit` | `false`, `checkpoint`, `final` | `checkpoint` | Commit strategy. |
 | `max_epochs` | integer `1..100` | `50` | Maximum complete discover-transform-rescan epochs. |
@@ -71,6 +71,7 @@ Valid categories are correctness, reliability, tests, security, maintainability,
 Rules:
 
 - `mode=report` forces `commit=false` and `delivery=none`.
+- `feature_policy=proactive` enables new repository-aligned features while protecting accepted behavior for existing inputs.
 - `max_epochs` must be at least `quiescence_scans`.
 - `compatibility=observable-output` does not preserve private APIs, file layout, dependencies, algorithms, or architecture.
 - `rewrite_policy=aggressive` requires real replacement candidates for systemic findings and prohibits smallest-diff bias.
@@ -90,7 +91,7 @@ Optimize in this order: accepted-contract correctness and safety; total verified
 ## 5. Default Aggressive Profile
 
 ```text
-mode=apply focus=all feature_policy=strong-evidence resume=true
+mode=apply focus=all feature_policy=proactive resume=true
 commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto
 network=public-read rewrite_policy=aggressive
 compatibility=observable-output delivery=pull-request pr_state=ready
@@ -102,6 +103,7 @@ The default MUST:
 - cross every component with every discovery category;
 - inspect source, tests, fixtures, CI, build logic, packaging, dependencies, configuration, examples, documentation, and history;
 - continue beyond current failures, TODOs, issue lists, and passing tests;
+- proactively discover and implement every eligible repository-aligned feature instead of limiting additions to behavior already promised;
 - generate patch, refactor, deletion, dependency-removal, replacement, and clean-room rewrite hypotheses;
 - apply every eligible change rather than a top-N sample;
 - avoid arbitrary finding caps, file caps, and representative-only inspection;
@@ -205,7 +207,7 @@ Build the cross-product of every component and enabled category. Inspect:
 7. performance, allocations, I/O, startup, caching, batching, contention, and algorithms;
 8. dependency modernization, removal, unsupported runtimes, and upstream changes;
 9. documentation, examples, onboarding, operability, diagnostics, and developer experience;
-10. strongly evidenced feature gaps;
+10. missing documented behavior and new repository-aligned feature opportunities;
 11. portability, compatibility, serialization, migration, and upgrade paths;
 12. whole-system deletion, consolidation, and clean-room replacement.
 
@@ -217,17 +219,28 @@ Do not stop because tests pass, a scan is initially clean, the diff is large, or
 
 Record each hypothesis with its target and falsification method. Record each finding with exact location, reproduction, current and expected behavior, evidence, inference, impact, confidence, risk, scope, dependencies, conflicts, rollback, verification, overlap, and alternatives.
 
-A change is eligible when evidence and confidence are each at least 3 of 5, verification is feasible, contracts are known or capturable, rollback is safe, user work is protected, and expected value exceeds regression risk.
+A change is eligible when evidence and confidence are each at least 3 of 5, verification is feasible, contracts are known or capturable, rollback is safe, user work is protected, and expected value exceeds regression risk. A feature candidate must also satisfy the selected `feature_policy` and have testable acceptance criteria.
 
-Apply all eligible changes. Priority determines order, not omission. Batch compatible small findings rather than leaving known debt.
+Apply all eligible changes, including eligible feature additions. Priority determines order, not omission. Batch compatible small findings rather than leaving known debt.
 
-Feature additions require authoritative intent. Maintainability and architecture work may qualify through measurable complexity, duplication, dead code, cycles, obsolete compatibility burden, unnecessary dependencies, or a lower-risk replacement path.
+Apply feature policies as follows:
+
+- `off`: add no user-visible capabilities.
+- `documented`: implement only behavior explicitly promised by accepted sources.
+- `strong-evidence`: also implement missing behavior supported by an authoritative intent source plus corroboration, or two strong independent intent sources.
+- `proactive`: actively originate new repository-aligned features even when never promised. Require at least three evidence points, including one repository-alignment source and one independent user-value or demand signal.
+
+Alignment evidence may come from product purpose, maintained workflows, public interfaces, architecture, adjacent capabilities, or authoritative upstream conventions. Value evidence may come from repeated issues, usage or support evidence, recurring workarounds, unmet workflows in history, interoperability gaps, or broadly adopted ecosystem expectations. One source cannot fill both roles.
+
+Before eligibility, define the target user and problem, acceptance criteria, existing-contract impact, security and privacy impact, operational cost, migration or rollout, documentation and examples, verification, and rollback. Preserve accepted behavior for existing inputs unless authoritative migration evidence permits a breaking change. Do not add speculative novelty, pricing or policy decisions, hidden collection, unowned external services or secrets, or product-ambiguous features. TODOs, aesthetics, preference, and competitor presence alone are insufficient.
+
+Maintainability and architecture work may qualify through measurable complexity, duplication, dead code, cycles, obsolete compatibility burden, unnecessary dependencies, or a lower-risk replacement path.
 
 Never reject a valid finding merely because it is broad, low severity, difficult to review, or unrelated to a failing test.
 
 ## 15. Transformation Alternatives and Plan
 
-For every root cause compare no change, surgical patch, local refactor, module replacement, dependency replacement/removal, subsystem redesign, architecture migration, and whole-codebase clean-room rewrite when relevant.
+For every root cause or feature opportunity compare no change, cohesive feature or workflow extension, surgical patch, local refactor, module replacement, dependency replacement/removal, subsystem redesign, architecture migration, and whole-codebase clean-room rewrite when relevant.
 
 With `rewrite_policy=aggressive`, systemic findings require a designed replacement candidate, not a token mention. Compare complexity, dependency count, failure modes, performance, testability, migration, rollback, and contract risk. Prototype competing candidates when inexpensive enough to improve confidence.
 

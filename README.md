@@ -1,20 +1,20 @@
 # Autonomous Maintainer Skills for Codex
 
-Two repository-wide maintenance skills that aggressively discover and apply verifiable improvements, allow large refactors or complete rewrites when accepted observable behavior remains equivalent, and automatically deliver verified work through a dedicated branch and pull request.
+Two repository-wide maintenance skills that proactively add verified, repository-aligned features by default, aggressively discover and apply other verifiable improvements, allow large refactors or complete rewrites when accepted observable behavior remains equivalent, and automatically deliver verified work through a dedicated branch and pull request.
 
 | Variant | Skill | Runtime |
 |---|---|---|
 | Standalone | `autonomous-maintainer-standalone` | Codex, Git, and repository tools |
 | OMX | `autonomous-maintainer` | Codex plus Oh My Codex |
 
-## New default behavior in 2.0
+## New default behavior in 2.1
 
 The default profile now uses:
 
 ```text
 mode=apply
 focus=all
-feature_policy=strong-evidence
+feature_policy=proactive
 resume=true
 commit=checkpoint
 max_epochs=50
@@ -32,6 +32,7 @@ pr_state=ready
 This means the maintainer:
 
 - searches every supported category and continues after the first fixes;
+- originates and implements new repository-aligned features when codebase alignment, user value, acceptance criteria, compatibility, verification, and rollback evidence pass the proactive feature gate;
 - considers module replacement, dependency removal, architecture migration, and whole-codebase rewrites;
 - treats internal implementation as replaceable when public and observable behavior remains equivalent;
 - captures baseline behavior and uses differential, golden, contract, property, compatibility, and performance checks as applicable;
@@ -44,6 +45,8 @@ This means the maintainer:
 Aggressive transformations can expose incomplete contracts, change undocumented behavior, increase migration complexity, or produce a large review surface. The default workflow mitigates these risks by capturing observable behavior before replacement, strengthening contract tests, comparing baseline and candidate outputs, requiring independent review for high-risk work, retaining candidate-specific rollback evidence, and running three clean repository-wide rescans.
 
 Automatic delivery is limited to a dedicated run branch and a pull request. It does not push to the default branch or merge the PR. Delivery is skipped or marked blocked when repository identity, write permission, secret scanning, verification, branch safety, or PR-target checks fail. Use `pr_state=draft` for additional human review or `delivery=none` to keep all work local.
+
+Proactive feature discovery does not mean arbitrary invention. A new feature needs at least three evidence points, including repository alignment and an independent user-value or demand signal, plus explicit acceptance criteria and a safe implementation and rollback path. Existing accepted behavior remains protected. Use `feature_policy=strong-evidence` to limit work to strongly evidenced missing behavior, `feature_policy=documented` to implement only promises already present in accepted sources, or `feature_policy=off` to disable user-visible feature additions.
 
 ## Install
 
@@ -92,7 +95,7 @@ $autonomous-maintainer
 The explicit default invocation is:
 
 ```text
-mode=apply focus=all feature_policy=strong-evidence resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
+mode=apply focus=all feature_policy=proactive resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
 ```
 
 Useful overrides:
@@ -103,7 +106,9 @@ rewrite_policy=surgical             # prefer localized changes
 delivery=none                       # do not push or create a PR
 pr_state=draft                      # create a draft PR
 compatibility=public-contract       # preserve all documented public contracts
-feature_policy=off                  # do not add missing features
+feature_policy=off                  # do not add user-visible features
+feature_policy=documented           # add only features already promised by accepted sources
+feature_policy=strong-evidence       # add strongly evidenced missing behavior, but do not originate features
 ```
 
 ## Observable-output compatibility

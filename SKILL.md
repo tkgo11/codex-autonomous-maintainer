@@ -1,6 +1,6 @@
 ---
 name: autonomous-maintainer
-description: "Use OMX to exhaustively improve an entire repository. Apply every verified fix, refactor, deletion, or rewrite while preserving the selected observable behavior, then deliver the verified result through a dedicated pull request."
+description: "Use OMX to exhaustively improve an entire repository. Proactively discover and add verified repository-aligned features by default, apply every verified fix, refactor, deletion, or rewrite while protecting accepted behavior, then deliver the result through a dedicated pull request."
 ---
 
 # Autonomous Maintainer
@@ -16,7 +16,7 @@ Activate only when the user explicitly invokes `$autonomous-maintainer` or clear
 The mission is to:
 
 - inspect the whole declared repository scope without waiting for an issue list;
-- find every evidence-backed defect, risk, simplification, deletion, modernization, missing test, missing behavior, and replacement opportunity that available tools can expose;
+- find every evidence-backed defect, risk, simplification, deletion, modernization, missing test, missing behavior, new repository-aligned feature, and replacement opportunity that available tools can expose;
 - keep searching after easy fixes, passing tests, a large diff, or a plausible first solution;
 - challenge the current architecture and compare it with clean replacement designs;
 - replace modules, frameworks, dependencies, architecture, or the whole codebase when the replacement is better under the selected contract;
@@ -54,7 +54,7 @@ $autonomous-maintainer resume [key=value ...]
 |---|---|---:|---|
 | `mode` | `apply`, `report` | `apply` | Apply verified changes or produce a read-only transformation program. |
 | `focus` | `all` or categories | `all` | Discovery categories; contract capture and regression checks always remain enabled. |
-| `feature_policy` | `off`, `documented`, `strong-evidence` | `strong-evidence` | Eligibility for missing behavior. |
+| `feature_policy` | `off`, `documented`, `strong-evidence`, `proactive` | `proactive` | Eligibility for missing behavior and new features. |
 | `resume` | `true`, `false` | `true` | Resume compatible durable state. |
 | `commit` | `false`, `checkpoint`, `final` | `checkpoint` | Commit strategy before delivery. |
 | `max_epochs` | integer `1..100` | `50` | Maximum complete discover-transform-rescan epochs. |
@@ -78,6 +78,7 @@ Validation rules:
 
 - `max_epochs >= quiescence_scans`.
 - `mode=report` forces `commit=false` and `delivery=none`.
+- `feature_policy=proactive` enables discovery and implementation of new repository-aligned features; it does not authorize breaking accepted behavior for existing inputs.
 - `compatibility=observable-output` protects observable effects, not file layout, private APIs, dependencies, algorithms, or architecture.
 - `rewrite_policy=aggressive` prohibits smallest-diff bias and requires replacement candidates for systemic findings.
 - `delivery=pull-request` permits only a dedicated remote branch and PR after the delivery gate.
@@ -110,7 +111,7 @@ A large coherent replacement is preferable to fragile patches when it produces a
 ```text
 mode=apply
 focus=all
-feature_policy=strong-evidence
+feature_policy=proactive
 resume=true
 commit=checkpoint
 max_epochs=50
@@ -129,6 +130,7 @@ The default MUST:
 - enumerate all in-scope components and cross them with all discovery categories;
 - inspect source, tests, fixtures, build logic, CI, packaging, dependencies, configuration, examples, documentation, and history;
 - continue beyond current failures, TODOs, lint output, and existing issue lists;
+- proactively discover and implement every eligible repository-aligned feature instead of limiting feature work to behavior already promised;
 - generate competing patch, refactor, replacement, deletion, and clean-room rewrite hypotheses;
 - apply every eligible change rather than a top-N sample;
 - avoid arbitrary finding caps, file caps, time-boxed sampling, and “representative” inspection when tools can continue;
@@ -291,7 +293,7 @@ Construct the cross-product of every in-scope component with every enabled categ
 7. performance, allocations, I/O, startup, caching, batching, contention, and algorithmic complexity;
 8. dependency modernization, replacement, removal, unsupported runtimes, and upstream behavioral changes;
 9. documentation, examples, onboarding, operability, diagnostics, and developer experience;
-10. feature gaps supported by authoritative evidence;
+10. missing documented behavior and new repository-aligned feature opportunities;
 11. portability, compatibility, serialization, migration, and upgrade/downgrade paths;
 12. whole-system deletion, consolidation, extraction, and clean-room replacement opportunities.
 
@@ -320,10 +322,21 @@ A finding may be created for:
 - a test gap that allows a plausible regression;
 - measurable complexity, duplication, dead code, or dependency burden;
 - an objectively simpler implementation with equivalent behavior;
-- a missed documented or strongly evidenced feature;
+- a missed documented feature or a new repository-aligned capability with verified user value;
 - a replacement whose measured quality dominates the incumbent.
 
-Feature additions require an authoritative promise plus independent corroboration, or two strong independent intent sources. TODOs, aesthetics, personal preference, and speculative product ideas are insufficient alone.
+Apply feature policies as follows:
+
+- `off`: do not add user-visible capabilities; fixes, tests, internal improvements, and compatibility work remain eligible.
+- `documented`: implement only behavior explicitly promised by accepted documentation, schemas, tests, or public interfaces.
+- `strong-evidence`: also implement missing behavior supported by an authoritative intent source plus independent corroboration, or by two strong independent intent sources.
+- `proactive`: actively originate and implement new repository-aligned features even when they were never promised. Require at least three evidence points, including one repository-alignment source and one independent user-value or demand signal.
+
+Repository-alignment sources include the stated product purpose, maintained workflows, public interfaces, architecture, adjacent capabilities, and authoritative upstream conventions. User-value or demand signals include repeated issues or discussions, support or usage evidence, recurring manual workarounds, history showing an unmet workflow, interoperability gaps, and broadly adopted ecosystem expectations. A single source may not fill both required roles.
+
+Before a new feature becomes eligible, define its target user and problem, acceptance criteria, existing-contract impact, security and privacy impact, operational cost, migration or rollout needs, documentation and examples, verification plan, and rollback. Prefer cohesive features that complete an end-to-end workflow. Do not add speculative novelty, pricing or policy decisions, hidden data collection, external services or secrets without established ownership, or features whose product direction remains ambiguous. TODOs, aesthetics, personal preference, and competitor presence alone are insufficient.
+
+New features extend the accepted contract. Preserve existing accepted behavior for existing inputs unless authoritative migration evidence explicitly permits a breaking change. Validate new inputs, outputs, permissions, failure modes, accessibility, performance, and interoperability as applicable.
 
 Never discard a valid finding merely because it is low severity, broad in scope, inconvenient to review, or unrelated to a currently failing check.
 
@@ -333,13 +346,14 @@ A change is eligible when:
 
 - evidence strength is at least 3 of 5;
 - confidence is at least 3 of 5;
+- a feature candidate satisfies the selected `feature_policy` and has testable acceptance criteria;
 - verification is feasible;
 - accepted contracts are known or can be captured;
 - rollback or branch abandonment is safe;
 - unrelated user work remains protected;
 - expected value exceeds regression risk.
 
-Apply all eligible changes. Prioritization determines order, not whether lower-priority eligible work is omitted.
+Apply all eligible changes, including eligible feature additions. Prioritization determines order, not whether lower-priority eligible work is omitted.
 
 Prefer waves that unlock more discovery, remove blockers, strengthen contracts, eliminate root causes, or simplify later work. Batch compatible small findings to avoid leaving known debt behind. Keep conflicting alternatives separate until evidence selects a winner.
 
@@ -352,6 +366,7 @@ Statuses include `candidate`, `eligible`, `planned`, `in-progress`, `verifying`,
 For every root cause, compare all relevant alternatives:
 
 - no change with documented justification;
+- cohesive feature or workflow extension;
 - surgical patch;
 - local refactor;
 - module replacement;
@@ -378,6 +393,7 @@ Create a dependency graph of findings, hypotheses, contract gaps, and transforma
 The plan MUST include:
 
 - accepted contracts and invariants;
+- feature acceptance contracts and compatibility boundaries;
 - component-category coverage targets;
 - alternatives and selection criteria;
 - file and state ownership;
