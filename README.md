@@ -53,8 +53,8 @@ Proactive feature discovery does not mean arbitrary invention. A new feature nee
 Clone the repository:
 
 ```bash
-git clone https://github.com/tkgo11/autonomous-maintainer-skill.git
-cd autonomous-maintainer-skill
+git clone https://github.com/tkgo11/codex-autonomous-maintainer.git
+cd codex-autonomous-maintainer
 ```
 
 Standalone, user scope:
