@@ -1,6 +1,6 @@
 # Invocation examples
 
-## Default aggressive transformation and automatic PR
+## Default aggressive transformation and user-approved PR
 
 Standalone:
 
@@ -20,9 +20,13 @@ Equivalent explicit options:
 mode=apply focus=all feature_policy=proactive resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
 ```
 
-The default proactively originates and implements repository-aligned features that pass its evidence, acceptance, compatibility, verification, and rollback gates. It may also replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. Verified commits are pushed to a dedicated branch and a ready-for-review PR is created or updated automatically. It never merges the PR.
+The default proactively originates and implements repository-aligned features that pass its evidence, acceptance, compatibility, verification, and rollback gates. It may also replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. After final verification it presents a fingerprinted PR inspection packet and returns `awaiting-user-pr-approval`. Only explicit approval of that unchanged candidate permits the dedicated-branch push and ready-for-review PR creation or update. It never merges the PR.
 
-Use this default only when broad autonomous changes and automatic PR delivery are intended. Start with `mode=report`, `rewrite_policy=surgical`, `pr_state=draft`, or `delivery=none` when the repository contract or desired scope is uncertain.
+Use this default only when broad autonomous changes and user-approved PR delivery are intended. Start with `mode=report`, `rewrite_policy=surgical`, `pr_state=draft`, or `delivery=none` when the repository contract or desired scope is uncertain.
+
+## Approve the prepared candidate
+
+When the run returns `awaiting-user-pr-approval`, inspect the displayed base/head, diff summary, checks, risks, title, body, draft state, and fingerprint. Reply with an explicit approval that identifies the current candidate. A previous approval or a generic acknowledgement does not authorize a changed candidate.
 
 ## Draft PR
 

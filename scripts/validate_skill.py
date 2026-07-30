@@ -37,6 +37,8 @@ COMMON_REQUIRED = [
     "pull request",
     "blocked-user-work",
     "resume-required",
+    "awaiting-user-pr-approval",
+    "explicit user approval",
 ]
 
 SKILL_SPECS = {
