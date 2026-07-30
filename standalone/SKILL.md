@@ -322,7 +322,7 @@ Record the upstream repository, delivery repository, authenticated account, perm
 
 If upstream is read-only and fork creation, fork push, or cross-repository PR creation is unavailable, record the exact failed capability and return `partial-blocked`; do not silently downgrade to report-only or ask the user to perform routine fork steps manually.
 
-Never merge the PR automatically.
+Never merge it automatically.
 
 ## 21. Full-Scope Rescan and Convergence
 
