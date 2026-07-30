@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.0 — 2026-07-30
+
+- Added a mandatory fingerprinted user-inspection gate immediately before pull-request delivery in both skill variants.
+- Added the durable `awaiting-user-pr-approval` state; initial invocation, silence, generic acknowledgement, or approval of an older candidate no longer authorizes PR creation or update.
+- The inspection packet now includes delivery topology, exact base/head refs and SHAs, commits, changed files, diff summary, verification failures and blind spots, risks, rollback, proposed title/body, draft state, and a candidate fingerprint.
+- Any change to the candidate invalidates approval and requires a fresh inspection; rejected candidates remain unopened and may be revised or downgraded to branch-only/local delivery.
+- Updated documentation, examples, validation requirements, version metadata, and package checksums.
+
 ## 2.1.0 — 2026-07-19
 
 - Added `feature_policy=proactive` and made it the default for both OMX and standalone variants.
