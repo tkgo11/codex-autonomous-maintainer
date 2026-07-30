@@ -27,13 +27,13 @@ jobs:
         run: |
           python3 - <<'PYTHON'
           from pathlib import Path
-          import textwrap
 
           workflow = Path('.github/workflows/apply-pr-approval-gate.yml').read_text(encoding='utf-8')
           marker = "          python3 - <<'PY'\n"
           start = workflow.index(marker) + len(marker)
           end = workflow.index("\n          PY\n", start)
-          code = textwrap.dedent(workflow[start:end])
+          lines = workflow[start:end].splitlines()
+          code = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines)
           exec(compile(code, 'apply-pr-approval-gate.py', 'exec'), {'__name__': '__main__'})
           PYTHON
 
