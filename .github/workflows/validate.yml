@@ -14,8 +14,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate skill variants
         run: make validate
-      - name: Print updated skill checksums
-        run: sha256sum SKILL.md standalone/SKILL.md
       - name: Verify package checksums
         run: sha256sum --check CHECKSUMS.txt
       - name: Test installers
