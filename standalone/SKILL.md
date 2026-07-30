@@ -65,7 +65,7 @@ $autonomous-maintainer-standalone [key=value ...] ["free-form constraint"]
 | `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` | Preservation boundary. |
 | `delivery` | `none`, `branch`, `pull-request` | `pull-request` | Remote delivery behavior. |
 | `permission_fallback` | `fork`, `block` | `fork` | Automatically use a validated fork when the upstream is not writable, or block delivery. |
-| `pr_state` | `draft`, `ready` | `ready` | Pull-request state. |
+| `pr_state` | `draft`, `ready` | `ready` | State of the pull request created or updated after user approval. |
 
 Valid categories are correctness, reliability, tests, security, maintainability, architecture, documentation, developer-experience, performance, features, dependencies, compatibility, simplification, and dead-code.
 
@@ -353,7 +353,7 @@ Stop writes only for cancellation, prohibited boundaries, unresolved Git operati
 
 Do not stop because the diff is large, many findings exist, passing tests create comfort, a rewrite is uncomfortable, easy fixes are complete, low-priority eligible work remains, or the upstream is read-only while safe fork delivery is available.
 
-Verified partial work may still be delivered in a clearly marked PR when delivery is safe. Experimental edits must not be delivered.
+Verified partial work may still be prepared as a clearly marked, fingerprinted PR candidate when delivery is safe. It may be pushed and created or updated only after explicit approval at the mandatory inspection gate. Experimental edits must not be delivered.
 
 ## 23. Final Quality Gate and Report
 

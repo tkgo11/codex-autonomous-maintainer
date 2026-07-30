@@ -65,7 +65,7 @@ $autonomous-maintainer resume [key=value ...]
 | `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` | Preservation boundary. |
 | `delivery` | `none`, `branch`, `pull-request` | `pull-request` | Remote delivery behavior. |
 | `permission_fallback` | `fork`, `block` | `fork` | When upstream is not writable, automatically use a validated fork or stop delivery. |
-| `pr_state` | `draft`, `ready` | `ready` | State of an automatically created pull request. |
+| `pr_state` | `draft`, `ready` | `ready` | State of the pull request created or updated after user approval. |
 
 Valid focus categories:
 
@@ -516,7 +516,7 @@ Remote delivery is allowed only when:
 - no equivalent active PR exists across same-repository and cross-repository heads;
 - the final matrix, report, and verification evidence match the delivered head.
 
-If a matching PR exists, update its branch and body rather than creating a duplicate.
+If a matching PR exists, classify the candidate as an update rather than a creation; do not push to its head branch or mutate its body until the mandatory inspection gate is approved.
 
 ## 25. Branch Delivery and Pre-PR User Inspection
 
@@ -583,7 +583,7 @@ Do not stop merely because:
 - a lower-priority eligible finding remains;
 - the canonical upstream is read-only when a safe fork-based delivery path is available.
 
-If verified changes exist and delivery remains safe, a partial-blocked run SHOULD still push and open a clearly marked PR containing only verified work. Never deliver experimental or unverified edits.
+If verified changes exist and delivery remains safe, a partial-blocked run SHOULD still prepare a clearly marked, fingerprinted PR candidate containing only verified work. Push and create or update it only after explicit approval at the mandatory inspection gate. Never deliver experimental or unverified edits.
 
 ## 27. Report Mode
 
@@ -632,7 +632,7 @@ Before `complete`, prove:
 - independent review and adversarial QA are clean;
 - required clean scans passed;
 - unrelated user work is preserved;
-- the dedicated branch was pushed to the upstream or validated fork and the upstream PR was created or updated when requested;
+- for `delivery=pull-request`, the exact candidate received explicit user approval, the dedicated branch was pushed to the upstream or validated fork, and the upstream PR was created or updated;
 - no merge, deployment, release, production mutation, force push, secret disclosure, or hidden test weakening occurred.
 
 Write a final report with scope coverage, discovery matrix, findings, hypotheses falsified, code and dependencies deleted, architecture replaced, equivalence corpus, verification, benchmark deltas, commits, upstream/fork/PR metadata, blockers, blind spots, and exact resume state.
