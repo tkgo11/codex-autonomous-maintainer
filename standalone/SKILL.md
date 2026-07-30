@@ -64,6 +64,7 @@ $autonomous-maintainer-standalone [key=value ...] ["free-form constraint"]
 | `rewrite_policy` | `surgical`, `allow`, `aggressive` | `aggressive` | Replacement policy. |
 | `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` | Preservation boundary. |
 | `delivery` | `none`, `branch`, `pull-request` | `pull-request` | Remote delivery behavior. |
+| `permission_fallback` | `fork`, `block` | `fork` | Automatically use a validated fork when the upstream is not writable, or block delivery. |
 | `pr_state` | `draft`, `ready` | `ready` | Pull-request state. |
 
 Valid categories are correctness, reliability, tests, security, maintainability, architecture, documentation, developer-experience, performance, features, dependencies, compatibility, simplification, and dead-code.
@@ -75,6 +76,7 @@ Rules:
 - `max_epochs` must be at least `quiescence_scans`.
 - `compatibility=observable-output` does not preserve private APIs, file layout, dependencies, algorithms, or architecture.
 - `rewrite_policy=aggressive` requires real replacement candidates for systemic findings and prohibits smallest-diff bias.
+- `permission_fallback=fork` authorizes automatic fork creation or reuse, fork-branch push, and a cross-repository PR to the validated upstream without another confirmation.
 - Unknown options or categories are errors.
 - Free-form constraints are durable.
 
@@ -94,8 +96,8 @@ Optimize in this order: accepted-contract correctness and safety; total verified
 mode=apply focus=all feature_policy=proactive resume=true
 commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto
 network=public-read rewrite_policy=aggressive
-compatibility=observable-output delivery=pull-request pr_state=ready
-candidate_retry_limit=3
+compatibility=observable-output delivery=pull-request
+permission_fallback=fork pr_state=ready candidate_retry_limit=3
 ```
 
 The default MUST:
@@ -114,7 +116,7 @@ The default MUST:
 
 ## 6. Safety Boundary
 
-Never force-push, rewrite published history, merge, deploy, release, publish, mutate production, push directly to the default branch, discard unrelated work, expose secrets, invent policy, weaken valid tests, hide unsupported output differences, suppress diagnostics without proof, execute untrusted copied code without containment, follow external symlinks, or claim unavailable checks passed.
+Never force-push, rewrite published history, merge, deploy, release, publish, mutate production, push directly to the default branch, discard unrelated work, expose secrets, use credentials for anything except the validated upstream or an authenticated fork proven to descend from it, invent policy, weaken valid tests, hide unsupported output differences, suppress diagnostics without proof, execute untrusted copied code without containment, follow external symlinks, or claim unavailable checks passed.
 
 A timeout, skip, flaky result, missing prerequisite, non-zero exit, or environment error is not a pass.
 
@@ -122,7 +124,7 @@ Aggressive discovery does not lower evidence standards. Broad rewrites, dependen
 
 ## 7. Repository Protection
 
-Before edits, resolve repository root, Git state, default branch, starting `HEAD`, remotes, worktrees, submodules, repository instructions, generated boundaries, and every pre-existing modification. Fingerprint overlapping user work.
+Before edits, resolve repository root, Git state, canonical upstream independently of local remote names, default branch, starting `HEAD`, authenticated account, upstream permission, existing validated fork, remotes, worktrees, submodules, repository instructions, generated boundaries, and every pre-existing modification. Fingerprint overlapping user work.
 
 Create or reuse `autonomous-maintainer/<run-id>-<slug>`. Never use reset, checkout, stash, clean, or whole-worktree replacement to resolve overlap. Mark `blocked-user-work` when exact preservation cannot be proved and continue in disjoint areas.
 
@@ -130,7 +132,7 @@ Refuse writes during unresolved Git operations, corruption, uncertain repository
 
 ## 8. Capability Detection
 
-Create `capabilities.json` covering filesystem, patching, terminal, process control, Git, remote authentication, pull-request creation, planning, native subagents, public research, language-aware analysis, coverage, mutation, fuzzing, profiling, tracing, dependency auditing, and repository-native build/test/lint/type/security/benchmark commands.
+Create `capabilities.json` covering filesystem, patching, terminal, process control, Git, remote authentication, upstream permission lookup, fork creation and reuse, fork synchronization, same-repository and cross-repository pull-request creation, planning, native subagents, public research, language-aware analysis, coverage, mutation, fuzzing, profiling, tracing, dependency auditing, and repository-native build/test/lint/type/security/benchmark commands.
 
 Use native read-only delegation for parallel inventory, discovery, research, and independent read-only review when available. Assign explicit non-overlapping scopes and reconcile centrally.
 
@@ -172,9 +174,9 @@ Each component-category matrix cell records files inspected, commands run, hypot
 
 ## 10. Preflight and Resume
 
-Validate options, reconcile repository identity and origin, inspect Git and user work, discover active runs and existing run branches or PRs, build capabilities, reconcile durable state and fingerprints, detect stale evidence, and classify write and delivery capability.
+Validate options, reconcile repository identity, canonical upstream, local remotes, Git state, and user work; discover the upstream default branch, authenticated account, upstream permission, existing validated fork, active runs, and existing same-repository or fork-based run PRs; build capabilities; reconcile durable state, delivery topology, and fingerprints; detect stale evidence or fork divergence; and classify direct-delivery, fork-delivery, report, or blocked capability.
 
-Resume compatible inactive work when `resume=true`. Never create duplicate active runs or duplicate pull requests for the same run ID. Revalidate prior evidence after repository, dependency, tool, or upstream changes.
+Resume compatible inactive work when `resume=true`. Never create duplicate active runs or duplicate pull requests for the same run ID. Revalidate prior evidence after repository, dependency, tool, upstream, or fork changes.
 
 ## 11. Inventory and Contract Map
 
@@ -246,7 +248,7 @@ With `rewrite_policy=aggressive`, systemic findings require a designed replaceme
 
 Prefer deletion and consolidation over another abstraction layer. Private APIs, internal-only tests, file layout, frameworks, languages, and dependencies may change when the observable-output corpus supports the result.
 
-Create a living dependency graph and wave plan covering contracts, matrix coverage, alternatives, ownership, deletion and migration order, differential verification, rollback, commits, review, rescan, and delivery. Insert newly discovered eligible work instead of silently deferring it.
+Create a living dependency graph and wave plan covering contracts, matrix coverage, alternatives, ownership, deletion and migration order, differential verification, rollback, commits, review, rescan, upstream/fork delivery topology, and PR creation. Insert newly discovered eligible work instead of silently deferring it.
 
 ## 16. Execution
 
@@ -305,7 +307,20 @@ For `commit=checkpoint`, commit each verified wave. For `commit=final`, commit o
 
 Stage explicit owned paths and inspect staged diffs. Push only the dedicated run branch, never the default branch, and never force-push.
 
-For `delivery=pull-request`, validate authenticated origin and permission, then push verified commits and create or update a PR targeting the default branch. Include summary, deletions and replacement architecture, observable-output evidence, checks, benchmarks, migrations, risks, blockers, blind spots, and rollback.
+For `delivery=branch` or `delivery=pull-request`, select delivery automatically after final verification:
+
+1. validate the canonical upstream, its default branch, the authenticated account, and upstream write permission;
+2. if upstream is writable, push the dedicated branch to the upstream repository;
+3. if upstream is not writable and `permission_fallback=fork`, create or reuse the authenticated account's fork only after proving its parent or source matches the upstream;
+4. preserve the canonical repository as the upstream/base remote and use the fork only as the delivery/head remote; do not overwrite unrelated remote configuration;
+5. ensure the run branch descends from the recorded upstream base; handle a stale fork by fast-forward synchronization or by creating the dedicated branch directly from the upstream base, never by force-pushing published history;
+6. push the dedicated branch without force to the selected delivery repository.
+
+For `delivery=pull-request`, create or update a PR in the canonical upstream repository targeting its default branch. Use the local upstream branch as the head in direct mode or `<authenticated-login>:<dedicated-branch>` in fork mode, and enable maintainer edits when supported. Include summary, deletions and replacement architecture, observable-output evidence, checks, benchmarks, migrations, risks, blockers, blind spots, rollback, and delivery mode.
+
+Record the upstream repository, delivery repository, authenticated account, permission result, direct-or-fork mode, fork identity, branch, head/base SHAs, and PR metadata in `delivery.json`. Search both same-repository and cross-repository heads before creating a PR so a resumed run updates rather than duplicates it.
+
+If upstream is read-only and fork creation, fork push, or cross-repository PR creation is unavailable, record the exact failed capability and return `partial-blocked`; do not silently downgrade to report-only or ask the user to perform routine fork steps manually.
 
 Never merge it automatically.
 
@@ -333,7 +348,7 @@ Return every eligible finding, not only a short prioritized sample.
 
 Stop writes only for cancellation, prohibited boundaries, unresolved Git operations, corruption, inability to preserve user work, unavailable authoritative contract for risky behavior change, unsafe rollback, missing credentials, unresolved policy, repeated environment failure, or epoch limit.
 
-Do not stop because the diff is large, many findings exist, passing tests create comfort, a rewrite is uncomfortable, easy fixes are complete, or low-priority eligible work remains.
+Do not stop because the diff is large, many findings exist, passing tests create comfort, a rewrite is uncomfortable, easy fixes are complete, low-priority eligible work remains, or the upstream is read-only while safe fork delivery is available.
 
 Verified partial work may still be delivered in a clearly marked PR when delivery is safe. Experimental edits must not be delivered.
 
@@ -352,9 +367,9 @@ Before `complete`, prove:
 - independent review and adversarial QA are clean;
 - required clean scans passed;
 - unrelated user work is preserved;
-- requested branch and PR delivery succeeded.
+- the dedicated branch was pushed to the upstream or validated fork and the upstream PR was created or updated when requested.
 
-Write `reports/final.md` with matrix coverage, findings, falsified hypotheses, code and dependencies deleted, architecture replaced, equivalence corpus, checks, benchmark deltas, commits, PR metadata, blockers, blind spots, durable artifacts, and resume command.
+Write `reports/final.md` with matrix coverage, findings, falsified hypotheses, code and dependencies deleted, architecture replaced, equivalence corpus, checks, benchmark deltas, commits, upstream/fork/PR metadata, blockers, blind spots, durable artifacts, and resume command.
 
 Allowed results are `complete`, `partial-blocked`, `report-only`, `resume-required`, `cancelled`, and `environment-error`.
 
@@ -368,7 +383,8 @@ PREFLIGHT -> INVENTORY -> CONTRACT CAPTURE -> BASELINE
        -> NEW WORK OR STALE CELL: TRANSFORM
        -> CLEAN COUNT: FINAL GATE
        -> EPOCH LIMIT: RESUME-REQUIRED
-  -> PUSH RUN BRANCH -> CREATE/UPDATE PR -> FINAL REPORT
+  -> SELECT DIRECT OR FORK DELIVERY -> PUSH RUN BRANCH
+  -> CREATE/UPDATE UPSTREAM PR -> FINAL REPORT
 ```
 
 At every transition, persist state and continue automatically when safe and deterministic.
@@ -379,4 +395,5 @@ Never claim perfection or mathematical completeness. State only what evidence pr
 - “All eligible findings discovered under available tools were applied and verified.”
 - “The observable-output contract passed the recorded differential corpus.”
 - “Three consecutive full-matrix scans found no additional eligible work.”
-- “Verified changes were pushed and pull request #N was created.”
+- “Verified changes were pushed and pull request #N was created against the upstream repository.”
+- “The upstream was read-only, so the verified branch was pushed to the validated fork and pull request #N was created upstream.”
