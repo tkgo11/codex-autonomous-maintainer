@@ -64,6 +64,7 @@ $autonomous-maintainer resume [key=value ...]
 | `rewrite_policy` | `surgical`, `allow`, `aggressive` | `aggressive` | Whether replacements are avoided, allowed, or actively competed. |
 | `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` | Preservation boundary. |
 | `delivery` | `none`, `branch`, `pull-request` | `pull-request` | Remote delivery behavior. |
+| `permission_fallback` | `fork`, `block` | `fork` | When upstream is not writable, automatically use a validated fork or stop delivery. |
 | `pr_state` | `draft`, `ready` | `ready` | State of an automatically created pull request. |
 
 Valid focus categories:
@@ -82,6 +83,7 @@ Validation rules:
 - `compatibility=observable-output` protects observable effects, not file layout, private APIs, dependencies, algorithms, or architecture.
 - `rewrite_policy=aggressive` prohibits smallest-diff bias and requires replacement candidates for systemic findings.
 - `delivery=pull-request` permits only a dedicated remote branch and PR after the delivery gate.
+- `permission_fallback=fork` authorizes automatic fork creation or reuse, fork-branch push, and a cross-repository PR to the validated upstream without another confirmation.
 - Unknown options or focus categories are errors.
 - Free-form constraints are durable hard constraints.
 
@@ -121,6 +123,7 @@ network=public-read
 rewrite_policy=aggressive
 compatibility=observable-output
 delivery=pull-request
+permission_fallback=fork
 pr_state=ready
 candidate_retry_limit=3
 ```
@@ -147,7 +150,7 @@ The workflow MUST NOT:
 - push directly to the default or protected branch;
 - discard, stash, overwrite, stage, or commit unrelated user work;
 - expose, copy, rotate, or transmit secret values;
-- use ambient credentials for a repository other than the validated origin;
+- use ambient credentials for any repository except the validated upstream or an authenticated fork proven to descend from that upstream;
 - invent pricing, legal terms, privacy policy, authorization policy, tenancy policy, ownership, or security policy;
 - weaken, delete, skip, quarantine, or rewrite valid tests merely to manufacture success;
 - normalize away unsupported output differences;
@@ -163,20 +166,21 @@ Aggressive discovery does not lower evidence or verification standards. Broad re
 Before any edit:
 
 1. resolve repository root, Git common directory, current branch, default branch, starting `HEAD`, worktree identity, remotes, sparse checkout, and submodules;
-2. sanitize remote URLs before recording them;
-3. read every applicable instruction file;
-4. inspect staged, unstaged, and untracked work plus in-progress Git operations;
-5. fingerprint pre-existing user work that may overlap;
-6. identify generated, vendored, archived, fixture, cache, binary, symlink, and submodule boundaries;
-7. refuse writes during unresolved merge, rebase, cherry-pick, revert, bisect, corruption, or uncertain ownership;
-8. create or reuse `autonomous-maintainer/<run-id>-<slug>` before the first commit;
-9. never resolve overlap with reset, checkout, stash, clean, or whole-worktree replacement.
+2. determine the canonical upstream repository independently of local remote names, then sanitize remote URLs before recording them;
+3. identify the authenticated account, upstream write permission, and any existing authenticated fork whose parent or source matches the upstream;
+4. read every applicable instruction file;
+5. inspect staged, unstaged, and untracked work plus in-progress Git operations;
+6. fingerprint pre-existing user work that may overlap;
+7. identify generated, vendored, archived, fixture, cache, binary, symlink, and submodule boundaries;
+8. refuse writes during unresolved merge, rebase, cherry-pick, revert, bisect, corruption, or uncertain ownership;
+9. create or reuse `autonomous-maintainer/<run-id>-<slug>` before the first commit;
+10. never resolve overlap with reset, checkout, stash, clean, or whole-worktree replacement.
 
 When overlap cannot be safely preserved, mark `blocked-user-work` and continue in disjoint areas.
 
 ## 8. Capability Detection and Tool Routing
 
-Build `capabilities.json` before planning. Record repository tools, Git operations, remote authentication, GitHub CLI or API access, build/test/lint/type/security/benchmark commands, language-aware analysis, coverage, mutation, fuzzing, profiling, tracing, dependency audit, native agents, installed helper skills, and OMX runtime state.
+Build `capabilities.json` before planning. Record repository tools, Git operations, remote authentication, upstream permission lookup, fork creation and reuse, fork synchronization, cross-repository PR creation, GitHub CLI or API access, build/test/lint/type/security/benchmark commands, language-aware analysis, coverage, mutation, fuzzing, profiling, tracing, dependency audit, native agents, installed helper skills, and OMX runtime state.
 
 Routing rules:
 
@@ -235,12 +239,12 @@ Each component-category matrix cell records files examined, commands run, hypoth
 Execute in order:
 
 1. validate invocation;
-2. reconcile repository identity, branch, origin, and worktree state;
-3. discover default branch and existing run branches or PRs;
+2. reconcile repository identity, canonical upstream, local remotes, branch, and worktree state;
+3. discover the upstream default branch, authenticated account, upstream permission, existing validated fork, and existing run branches or PRs across upstream and fork;
 4. build capability manifest;
-5. reconcile durable state, goals, findings, commits, matrix coverage, and fingerprints;
-6. detect stale assumptions caused by changed files, dependencies, tools, or upstream releases;
-7. classify the run as write-capable, report-capable, delivery-capable, or blocked.
+5. reconcile durable state, goals, findings, commits, matrix coverage, delivery topology, and fingerprints;
+6. detect stale assumptions caused by changed files, dependencies, tools, upstream releases, or fork divergence;
+7. classify the run as write-capable, report-capable, direct-delivery-capable, fork-delivery-capable, or blocked.
 
 Resume compatible inactive work when `resume=true`. Never create duplicate active runs or duplicate PRs for the same run ID. A resumed run MUST revalidate prior evidence before relying on it.
 
@@ -403,7 +407,7 @@ The plan MUST include:
 - commit boundaries;
 - independent review and adversarial QA;
 - rescan triggers;
-- branch and PR delivery.
+- upstream, fork, branch, and PR delivery topology.
 
 The plan is a living artifact. Newly discovered work is inserted rather than deferred merely because it was absent from the initial plan. Do not silently omit eligible work because the plan or PR becomes large.
 
@@ -499,31 +503,44 @@ Require `quiescence_scans` consecutive clean full-matrix scans. At `max_epochs`,
 
 Remote delivery is allowed only when:
 
-- authenticated repository identity matches sanitized `origin`;
-- write permission exists;
+- the canonical upstream repository and default branch are validated independently of local remote names;
+- the authenticated account and its upstream permission are known;
+- either the upstream is writable, or `permission_fallback=fork` and an authenticated fork can be created or reused whose parent or source matches the upstream;
+- the delivery repository is exactly the upstream in direct mode or the validated fork in fork mode;
 - the branch is dedicated to this run and is not default or protected;
 - all delivered commits are intentional and verified;
 - no secret appears in the diff, history being pushed, logs, or remote URL;
 - the branch can be pushed without force;
-- the PR base is the discovered default branch;
-- no equivalent active PR exists;
+- the PR base is the upstream default branch;
+- the PR head is the dedicated branch in the selected delivery repository;
+- no equivalent active PR exists across same-repository and cross-repository heads;
 - the final matrix, report, and verification evidence match the delivered head.
 
 If a matching PR exists, update its branch and body rather than creating a duplicate.
 
 ## 25. Automatic Branch Push and Pull Request
 
-When `delivery=branch` or `delivery=pull-request`, push the dedicated branch after the final verification wave. Activation plus the delivery option is authority; do not ask for another confirmation.
+When `delivery=branch` or `delivery=pull-request`, select the delivery topology after the final verification wave. Activation plus the delivery option is authority; do not ask for another confirmation.
+
+1. Check authenticated write permission on the canonical upstream.
+2. If upstream is writable, push the dedicated branch to the upstream repository and use a same-repository PR.
+3. If upstream is not writable and `permission_fallback=fork`, automatically create or reuse the authenticated account's fork. Validate that its parent or source repository is the canonical upstream; never use an unrelated repository with the same name.
+4. Preserve the canonical repository as the upstream/base remote and use the fork only as the delivery/head remote. Do not rewrite the user's unrelated remote configuration; add or select an unambiguous remote name such as `fork` when needed.
+5. Before pushing, verify that the run branch descends from the recorded upstream base. If the fork's default branch is stale, synchronize it safely by fast-forward or recreate only the dedicated run branch from the upstream base; never force-push or rewrite published fork history.
+6. Push the dedicated run branch without force to the selected delivery repository.
 
 When `delivery=pull-request`:
 
-1. push all verified commits;
-2. create or update a PR targeting the default branch;
-3. set draft state from `pr_state`;
-4. include summary, deleted and replaced architecture, observable-output corpus, tests, analysis, benchmarks, risks, migrations, blocked findings, and rollback;
-5. expose any remaining blind spots and environment-limited checks;
-6. attach labels or reviewers only when repository policy authorizes them;
-7. record PR URL, number, head SHA, and base SHA in `delivery.json`.
+1. create or update a PR in the canonical upstream repository targeting its discovered default branch;
+2. in direct mode, use the dedicated upstream branch as the head;
+3. in fork mode, use the qualified fork head `<authenticated-login>:<dedicated-branch>` and enable maintainer edits when the hosting platform supports it;
+4. set draft state from `pr_state`;
+5. include summary, deleted and replaced architecture, observable-output corpus, tests, analysis, benchmarks, risks, migrations, blocked findings, rollback, and whether delivery used direct or fork mode;
+6. expose any remaining blind spots and environment-limited checks;
+7. attach labels or reviewers only when repository policy authorizes them;
+8. record upstream repository, delivery repository, authenticated account, permission result, delivery mode, fork identity, PR URL, number, head SHA, and base SHA in `delivery.json`.
+
+If upstream is not writable and fork creation, fork push, or cross-repository PR creation is unavailable, record the exact failed capability and return `partial-blocked`; do not silently downgrade to report-only or ask the user to perform the routine fork steps manually.
 
 Never merge the PR automatically.
 
@@ -539,7 +556,8 @@ Do not stop merely because:
 - easy fixes are complete;
 - tests currently pass;
 - a reviewer may prefer smaller patches;
-- a lower-priority eligible finding remains.
+- a lower-priority eligible finding remains;
+- the canonical upstream is read-only when a safe fork-based delivery path is available.
 
 If verified changes exist and delivery remains safe, a partial-blocked run SHOULD still push and open a clearly marked PR containing only verified work. Never deliver experimental or unverified edits.
 
@@ -561,7 +579,7 @@ Progress reports MUST include:
 - verification and equivalence state;
 - blockers and blind spots;
 - current epoch and clean-scan count;
-- branch, commit, and PR state.
+- upstream, delivery repository, permission mode, fork, branch, commit, and PR state.
 
 Allowed results:
 
@@ -589,10 +607,10 @@ Before `complete`, prove:
 - independent review and adversarial QA are clean;
 - required clean scans passed;
 - unrelated user work is preserved;
-- the dedicated branch was pushed and the PR was created or updated when requested;
+- the dedicated branch was pushed to the upstream or validated fork and the upstream PR was created or updated when requested;
 - no merge, deployment, release, production mutation, force push, secret disclosure, or hidden test weakening occurred.
 
-Write a final report with scope coverage, discovery matrix, findings, hypotheses falsified, code and dependencies deleted, architecture replaced, equivalence corpus, verification, benchmark deltas, commits, PR metadata, blockers, blind spots, and exact resume state.
+Write a final report with scope coverage, discovery matrix, findings, hypotheses falsified, code and dependencies deleted, architecture replaced, equivalence corpus, verification, benchmark deltas, commits, upstream/fork/PR metadata, blockers, blind spots, and exact resume state.
 
 ## 30. Control Loop and Completion Language
 
@@ -605,7 +623,8 @@ PREFLIGHT -> INVENTORY -> CONTRACT CAPTURE -> BASELINE
        -> NEW WORK OR STALE CELL: TRANSFORM
        -> CLEAN COUNT REACHED: FINAL GATE
        -> EPOCH LIMIT: RESUME-REQUIRED
-  -> PUSH DEDICATED BRANCH -> CREATE/UPDATE PR -> FINAL REPORT
+  -> SELECT DIRECT OR FORK DELIVERY -> PUSH DEDICATED BRANCH
+  -> CREATE/UPDATE UPSTREAM PR -> FINAL REPORT
 ```
 
 At every transition, persist state, verify preconditions, and continue automatically when safe and deterministic.
@@ -616,7 +635,8 @@ Never claim perfection or mathematical completeness. Prefer evidence-bounded lan
 - “All eligible findings discovered under the available tools and evidence were applied and verified.”
 - “The replacement preserved the selected observable-output contract under the recorded differential corpus.”
 - “Three consecutive full-matrix scans found no additional eligible work.”
-- “Verified changes were pushed and pull request #N was created.”
+- “Verified changes were pushed and pull request #N was created against the upstream repository.”
+- “The upstream was read-only, so the verified branch was pushed to the validated fork and pull request #N was created upstream.”
 - “The run is partially blocked by the listed evidence-backed items.”
 
-Begin with invocation validation, active-state reconciliation, worktree protection, origin validation, capability detection, and construction of the complete discovery matrix.
+Begin with invocation validation, active-state reconciliation, worktree protection, upstream and permission validation, capability detection, and construction of the complete discovery matrix.
