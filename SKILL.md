@@ -501,6 +501,47 @@ Require `quiescence_scans` consecutive clean full-matrix scans. At `max_epochs`,
 
 ## 24. Delivery Preconditions
 
+### Pull-request partitioning algorithm
+
+Before selecting delivery branches, map every verified transformation wave to a node and evaluate every pair of nodes. Add a **must-stay-together edge** when any of these conditions is true:
+
+1. either node would fail to build, test, run, or satisfy the accepted contract against the recorded upstream base without the other;
+2. both nodes implement the same user-visible acceptance criterion and splitting them would leave either PR behaviorally incomplete or misleading;
+3. both participate in one schema, data, configuration, protocol, or deployment migration that must land atomically;
+4. one node exists solely to supply tests, documentation, generated output, caller migration, compatibility removal, or cleanup required by the other;
+5. reverting either node alone would leave a supported state broken, unsafe, or contract-invalid;
+6. the repository cannot independently verify either node against the same upstream base because their verification corpus or fixtures are inherently coupled.
+
+The connected components of this graph are the minimum atomic PR units. Never split a connected component merely to reduce file count, changed lines, review difficulty, or apparent scope.
+
+Start with one PR candidate per connected component. Two components MAY be combined only when every condition below is true:
+
+- they can be described by one objective sentence and one coherent acceptance-criteria set;
+- they affect the same contract surface and risk class;
+- they belong to the same ownership or reviewer domain when repository evidence defines one;
+- neither component has useful independent release, review, or rollback value;
+- combined verification still attributes failures to a specific component;
+- none of the forced-separation rules below applies;
+- the combined candidate changes at most 10 files and at most 300 non-generated lines.
+
+Keep components in separate PRs when any of these forced-separation rules applies and no must-stay-together edge exists:
+
+- distinct user-visible features or distinct acceptance-criteria sets;
+- unrelated root causes, subsystems, or independently valuable fixes;
+- security, privacy, authentication, authorization, secret-handling, or trust-boundary work mixed with unrelated work;
+- dependency, runtime, toolchain, lockfile, or platform upgrades mixed with behavior changes;
+- mechanical formatting, mass rename, generated-file, vendored-file, or broad code-motion churn mixed with semantic changes;
+- infrastructure, deployment, release, or migration mechanics mixed with application behavior when the repository supports staged landing;
+- experimental diagnostics, opportunistic cleanup, or speculative refactoring mixed with the primary verified objective.
+
+Tests, documentation, changelog entries, generated artifacts, caller updates, and cleanup that exist only to support one implementation travel with that implementation rather than becoming separate PRs.
+
+Any candidate touching more than 25 files, more than 800 non-generated changed lines, or more than 3 top-level packages or workspaces MUST undergo a fresh decomposition audit. Split every disconnected component found by that audit, but do not split an atomic connected component solely because a threshold is exceeded. Size never justifies omitting eligible work.
+
+Every split candidate MUST build, pass its affected-closure verification, and preserve the accepted contract against the same recorded upstream base without any unmerged sibling candidate. If it cannot, the relevant nodes are not independent and MUST be joined. Do not create stacked PRs to disguise a missing must-stay-together edge.
+
+Record all nodes, edge reasons, connected components, forced-separation decisions, permitted merges, threshold audits, and the ordered PR candidate list in `delivery.json`. Every candidate receives its own dedicated branch and fingerprint. References below to “the PR candidate” apply independently to each member of this candidate list; a single inspection packet may present the complete list, but approval must explicitly cover every unchanged fingerprint that will be delivered.
+
 Remote delivery is allowed only when:
 
 - the canonical upstream repository and default branch are validated independently of local remote names;
