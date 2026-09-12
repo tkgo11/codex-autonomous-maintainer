@@ -336,7 +336,7 @@ bash ./install.sh --variant standalone --scope user --dry-run
 
 ### Update
 
-Pull the latest repository version and reinstall with replacement enabled. The installer validates the source, creates a timestamped backup of a different existing `SKILL.md`, performs an atomic replacement, and verifies the result.
+Pull the latest repository version and reinstall with replacement enabled. The installer validates the complete package, adds missing managed metadata/assets during legacy upgrades, creates timestamped backups for conflicting managed files, performs per-file atomic replacement, and verifies every installed file.
 
 ```bash
 git pull --ff-only
@@ -368,7 +368,7 @@ Windows PowerShell:
 .\uninstall.ps1 -Variant omx -Scope user
 ```
 
-The uninstallers verify the installed skill identity and preserve backups or unexpected files instead of deleting the entire directory blindly.
+The uninstallers verify the installed skill identity, remove only the managed `SKILL.md`, metadata, and icon, and preserve backups or unexpected files instead of deleting the entire directory blindly.
 
 ## Repository layout
 
