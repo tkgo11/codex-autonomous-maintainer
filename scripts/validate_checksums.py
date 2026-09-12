@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "CHECKSUMS.txt"
 SELF = "CHECKSUMS.txt"
+REQUIRED_EXECUTABLE = {"install.sh", "uninstall.sh"}
 LINE_RE = re.compile(r"^([0-9a-f]{64})  \./(.+)$")
 
 
