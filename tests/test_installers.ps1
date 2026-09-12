@@ -40,6 +40,30 @@ function Assert-FileEqual {
     }
 }
 
+function Assert-Package {
+    param(
+        [Parameter(Mandatory)]
+        [string]$SourceDir,
+        [Parameter(Mandatory)]
+        [string]$TargetDir
+    )
+
+    foreach ($Rel in @('SKILL.md', 'agents/openai.yaml', 'assets/icon.svg')) {
+        Assert-FileEqual -Expected (Join-Path $SourceDir $Rel) -Actual (Join-Path $TargetDir $Rel)
+    }
+}
+
+function Assert-PackageRemoved {
+    param([Parameter(Mandatory)][string]$TargetDir)
+
+    foreach ($Rel in @('SKILL.md', 'agents/openai.yaml', 'assets/icon.svg')) {
+        $Target = Join-Path $TargetDir $Rel
+        if (Test-Path -LiteralPath $Target) {
+            throw "Managed package file survived uninstall: $Target"
+        }
+    }
+}
+
 try {
     $HomeDir = Join-Path $Temp 'home'
     $env:HOME = $HomeDir
@@ -49,69 +73,83 @@ try {
 
     $Install = Join-Path $Root 'install.ps1'
     $Uninstall = Join-Path $Root 'uninstall.ps1'
-    $OmxSource = Join-Path $Root 'SKILL.md'
-    $StandaloneSource = Join-Path (Join-Path $Root 'standalone') 'SKILL.md'
+    $StandaloneSource = Join-Path $Root 'standalone'
 
     Invoke-PwshFile -File $Install -ScriptArgs @('-Variant', 'invalid') -ExpectFailure
 
     Invoke-PwshFile -File $Install -ScriptArgs @('-Variant', 'omx', '-Scope', 'user')
-    $OmxUserFile = Join-Path $env:CODEX_HOME 'skills/autonomous-maintainer/SKILL.md'
-    Assert-FileEqual -Expected $OmxSource -Actual $OmxUserFile
+    $OmxUserDir = Join-Path $env:CODEX_HOME 'skills/autonomous-maintainer'
+    $OmxUserFile = Join-Path $OmxUserDir 'SKILL.md'
+    Assert-Package -SourceDir $Root -TargetDir $OmxUserDir
     Invoke-PwshFile -File $Install -ScriptArgs @('-Variant', 'omx', '-Scope', 'user')
 
     Invoke-PwshFile -File $Install -ScriptArgs @('-Variant', 'standalone', '-Scope', 'user')
-    $StandaloneUserFile = Join-Path $env:CODEX_HOME 'skills/autonomous-maintainer-standalone/SKILL.md'
-    Assert-FileEqual -Expected $StandaloneSource -Actual $StandaloneUserFile
+    $StandaloneUserDir = Join-Path $env:CODEX_HOME 'skills/autonomous-maintainer-standalone'
+    Assert-Package -SourceDir $StandaloneSource -TargetDir $StandaloneUserDir
     Invoke-PwshFile -File $Install -ScriptArgs @('-Variant', 'standalone', '-Scope', 'user')
 
     Add-Content -LiteralPath $OmxUserFile -Value "`n# local modification"
     Invoke-PwshFile -File $Install -ScriptArgs @('-Variant', 'omx', '-Scope', 'user') -ExpectFailure
     Invoke-PwshFile -File $Install -ScriptArgs @('-Variant', 'omx', '-Scope', 'user', '-Force')
-    Assert-FileEqual -Expected $OmxSource -Actual $OmxUserFile
-    $Backups = Get-ChildItem -LiteralPath (Split-Path -Parent $OmxUserFile) -Filter 'SKILL.md.backup-*'
+    Assert-Package -SourceDir $Root -TargetDir $OmxUserDir
+    $Backups = Get-ChildItem -LiteralPath $OmxUserDir -Filter 'SKILL.md.backup-*'
     if (-not $Backups) { throw 'Expected forced installation to create a backup' }
+
+    $LegacyProject = Join-Path $Temp 'legacy-project'
+    $LegacyTarget = Join-Path $LegacyProject '.codex/skills/autonomous-maintainer-standalone'
+    New-Item -ItemType Directory -Path $LegacyTarget -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $StandaloneSource 'SKILL.md') -Destination (Join-Path $LegacyTarget 'SKILL.md')
+    Invoke-PwshFile -File $Install -ScriptArgs @(
+        '-Variant', 'standalone', '-Scope', 'project', '-ProjectDir', $LegacyProject
+    )
+    Assert-Package -SourceDir $StandaloneSource -TargetDir $LegacyTarget
 
     $DryProject = Join-Path $Temp 'dry-project'
     New-Item -ItemType Directory -Path $DryProject -Force | Out-Null
     Invoke-PwshFile -File $Install -ScriptArgs @(
         '-Variant', 'standalone', '-Scope', 'project', '-ProjectDir', $DryProject, '-DryRun'
     )
-    $DryTarget = Join-Path $DryProject '.codex/skills/autonomous-maintainer-standalone/SKILL.md'
-    if (Test-Path -LiteralPath $DryTarget) { throw 'Dry-run unexpectedly created a file' }
+    $DryTarget = Join-Path $DryProject '.codex/skills/autonomous-maintainer-standalone'
+    if (Test-Path -LiteralPath (Join-Path $DryTarget 'SKILL.md')) { throw 'Dry-run unexpectedly created SKILL.md' }
+    if (Test-Path -LiteralPath (Join-Path $DryTarget 'agents/openai.yaml')) { throw 'Dry-run unexpectedly created metadata' }
 
     $Project = Join-Path $Temp 'project'
     New-Item -ItemType Directory -Path $Project -Force | Out-Null
     Invoke-PwshFile -File $Install -ScriptArgs @(
         '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $Project
     )
-    $OmxProjectFile = Join-Path $Project '.codex/skills/autonomous-maintainer/SKILL.md'
-    Assert-FileEqual -Expected $OmxSource -Actual $OmxProjectFile
+    $OmxProjectDir = Join-Path $Project '.codex/skills/autonomous-maintainer'
+    Assert-Package -SourceDir $Root -TargetDir $OmxProjectDir
 
     Invoke-PwshFile -File $Install -ScriptArgs @(
         '-Variant', 'standalone', '-Scope', 'project', '-ProjectDir', $Project
     )
-    $StandaloneProjectFile = Join-Path $Project '.codex/skills/autonomous-maintainer-standalone/SKILL.md'
-    Assert-FileEqual -Expected $StandaloneSource -Actual $StandaloneProjectFile
+    $StandaloneProjectDir = Join-Path $Project '.codex/skills/autonomous-maintainer-standalone'
+    Assert-Package -SourceDir $StandaloneSource -TargetDir $StandaloneProjectDir
 
+    Set-Content -LiteralPath (Join-Path $StandaloneProjectDir 'user-note.txt') -Value 'keep me'
     Invoke-PwshFile -File $Uninstall -ScriptArgs @(
         '-Variant', 'standalone', '-Scope', 'project', '-ProjectDir', $Project, '-Confirm:$false'
     )
-    if (Test-Path -LiteralPath $StandaloneProjectFile) { throw 'Standalone project uninstall failed' }
+    Assert-PackageRemoved -TargetDir $StandaloneProjectDir
+    if (-not (Test-Path -LiteralPath (Join-Path $StandaloneProjectDir 'user-note.txt') -PathType Leaf)) {
+        throw 'Uninstaller removed an unexpected user file'
+    }
 
     Invoke-PwshFile -File $Uninstall -ScriptArgs @(
         '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $Project, '-Confirm:$false'
     )
-    if (Test-Path -LiteralPath $OmxProjectFile) { throw 'OMX project uninstall failed' }
+    Assert-PackageRemoved -TargetDir $OmxProjectDir
 
     Invoke-PwshFile -File $Uninstall -ScriptArgs @(
         '-Variant', 'standalone', '-Scope', 'user', '-Confirm:$false'
     )
-    if (Test-Path -LiteralPath $StandaloneUserFile) { throw 'Standalone user uninstall failed' }
+    Assert-PackageRemoved -TargetDir $StandaloneUserDir
 
     Invoke-PwshFile -File $Uninstall -ScriptArgs @(
         '-Variant', 'omx', '-Scope', 'user', '-Confirm:$false'
     )
-    if (Test-Path -LiteralPath $OmxUserFile) { throw 'OMX user uninstall failed' }
+    Assert-PackageRemoved -TargetDir $OmxUserDir
 
     Write-Host 'ok: PowerShell installer smoke tests passed'
 } finally {
