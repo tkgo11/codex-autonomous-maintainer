@@ -112,7 +112,6 @@ def parse_frontmatter(text: str) -> dict[str, str]:
     return result
 
 
-
 def validate_openai_metadata(skill_path: Path, skill_name: str) -> None:
     skill_dir = skill_path.parent
     metadata_path = skill_dir / "agents" / "openai.yaml"
@@ -132,99 +131,22 @@ def validate_openai_metadata(skill_path: Path, skill_name: str) -> None:
     if "\t" in text:
         fail(f"{metadata_path}: tabs are not allowed")
 
-    if not re.search(r"(?m)^interface:\s*$", text):
+    lines = text.splitlines()
+    if "interface:" not in lines:
         fail(f"{metadata_path}: missing interface mapping")
 
     def quoted_scalar(key: str) -> str:
-        matches = re.findall(
-            rf'(?m)^\s{{2}}{re.escape(key)}:\s*"([^"\n]*)"\s*    try:
-        raw = path.read_bytes()
-    except OSError as exc:
-        fail(f"cannot read {path}: {exc}")
-
-    if raw.startswith(b"\xef\xbb\xbf"):
-        fail("UTF-8 BOM is not allowed before frontmatter")
-    try:
-        text = raw.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        fail(f"file is not valid UTF-8: {exc}")
-    if "\r\n" in text:
-        fail("use LF line endings")
-
-    frontmatter = parse_frontmatter(text)
-    unexpected_keys = sorted(set(frontmatter) - {"name", "description"})
-    if unexpected_keys:
-        fail("unsupported frontmatter keys: " + ", ".join(unexpected_keys))
-    name = frontmatter.get("name", "")
-    if name not in SKILL_SPECS:
-        fail("unknown skill name")
-    if not frontmatter.get("description", "").strip():
-        fail("frontmatter description must not be empty")
-
-    spec = SKILL_SPECS[name]
-    title = spec["title"]
-    if len(re.findall(rf"(?m)^# {re.escape(title)}\s*$", text)) != 1:
-        fail(f"expected exactly one '# {title}' title")
-
-    section_numbers = [
-        int(number) for number in re.findall(r"(?m)^##\s+(\d+)\.\s+", text)
-    ]
-    if section_numbers != spec["sections"]:
-        fail(f"numbered sections do not match contract: {section_numbers}")
-
-    line_count = len(text.splitlines())
-    if line_count > spec["max_lines"]:
-        fail(f"{name} exceeds {spec['max_lines']} lines: {line_count}")
-    if len(re.findall(r"(?m)^```", text)) % 2:
-        fail("unbalanced fenced code blocks")
-
-    invocation_match = re.search(
-        r"(?ms)^## 3\. Invocation Contract\s*(.*?)(?=^## 4\.)", text
-    )
-    if not invocation_match:
-        fail("missing Invocation Contract section")
-    invocation = invocation_match.group(1)
-    missing_options = sorted(
-        option for option in REQUIRED_OPTIONS if f"`{option}`" not in invocation
-    )
-    if missing_options:
-        fail("Invocation Contract is missing options: " + ", ".join(missing_options))
-
-    required = [*COMMON_REQUIRED, *spec["required_phrases"]]
-    missing_phrases = [phrase for phrase in required if phrase not in text]
-    if missing_phrases:
-        fail("missing required safeguards: " + "; ".join(missing_phrases))
-
-    forbidden = [
-        pattern for pattern in spec["forbidden_patterns"] if re.search(pattern, text)
-    ]
-    if forbidden:
-        fail("forbidden standalone dependencies found: " + "; ".join(forbidden))
-
-    if any(
-        re.search(pattern, text)
-        for pattern in [r"\[Describe ", r"\[Specific action", r"(?m)^\s*(?:TODO|TBD)(?:[:\s]|$)"]
-    ):
-        fail("unresolved template placeholder found")
-
-    validate_openai_metadata(path, name)\n\n    print(f"ok: {path} ({line_count} lines, {len(raw)} bytes, metadata ok)")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("path", nargs="?", default="SKILL.md")
-    args = parser.parse_args()
-    validate(Path(args.path))
-
-
-if __name__ == "__main__":
-    main()
-,
-            text,
-        )
-        if len(matches) != 1:
-            fail(f"{metadata_path}: expected one quoted {key} value")
-        return matches[0]
+        prefix = f"  {key}: "
+        values = [line[len(prefix):] for line in lines if line.startswith(prefix)]
+        if len(values) != 1:
+            fail(f"{metadata_path}: expected one {key} value")
+        token = values[0]
+        if len(token) < 2 or token[0] != '"' or token[-1] != '"':
+            fail(f"{metadata_path}: {key} must be a quoted string")
+        value = token[1:-1]
+        if '"' in value:
+            fail(f"{metadata_path}: embedded quotes are not supported in {key}")
+        return value
 
     display_name = quoted_scalar("display_name")
     short_description = quoted_scalar("short_description")
@@ -239,10 +161,11 @@ if __name__ == "__main__":
             f"{metadata_path}: short_description must be 25..64 characters "
             f"(got {len(short_description)})"
         )
-    if f"$" + skill_name not in default_prompt:
+    required_invocation = "$" + skill_name
+    if required_invocation not in default_prompt:
         fail(
             f"{metadata_path}: default_prompt must explicitly reference "
-            f"$" + skill_name
+            f"{required_invocation}"
         )
 
     for key, value in (("icon_small", icon_small), ("icon_large", icon_large)):
@@ -259,15 +182,13 @@ if __name__ == "__main__":
             if "<svg" not in asset_text or "</svg>" not in asset_text:
                 fail(f"{asset_path}: malformed SVG asset")
 
-    policy_match = re.findall(
-        r"(?m)^\s{2}allow_implicit_invocation:\s*(true|false)\s*$", text
-    )
-    if len(policy_match) != 1:
+    policy_prefix = "  allow_implicit_invocation: "
+    policies = [line[len(policy_prefix):] for line in lines if line.startswith(policy_prefix)]
+    if len(policies) != 1 or policies[0] not in {"true", "false"}:
         fail(
             f"{metadata_path}: policy.allow_implicit_invocation must be "
-            "present exactly once"
+            "present exactly once as true or false"
         )
-
 
 
 def validate(path: Path) -> None:
@@ -341,7 +262,9 @@ def validate(path: Path) -> None:
     ):
         fail("unresolved template placeholder found")
 
-    print(f"ok: {path} ({line_count} lines, {len(raw)} bytes)")
+    validate_openai_metadata(path, name)
+
+    print(f"ok: {path} ({line_count} lines, {len(raw)} bytes, metadata ok)")
 
 
 def main() -> None:
