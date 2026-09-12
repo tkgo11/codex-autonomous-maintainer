@@ -17,7 +17,7 @@ $autonomous-maintainer
 Equivalent explicit options:
 
 ```text
-mode=apply focus=all feature_policy=proactive resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read rewrite_policy=aggressive compatibility=observable-output delivery=pull-request pr_state=ready
+mode=apply focus=all feature_policy=proactive resume=true commit=checkpoint max_epochs=50 quiescence_scans=3 parallelism=auto network=public-read candidate_retry_limit=3 rewrite_policy=aggressive compatibility=observable-output delivery=pull-request permission_fallback=fork pr_state=ready
 ```
 
 The default proactively originates and implements repository-aligned features that pass its evidence, acceptance, compatibility, verification, and rollback gates. It may also replace modules, dependencies, architecture, or the entire implementation when differential verification proves accepted observable behavior is preserved. After final verification it presents a fingerprinted PR inspection packet and returns `awaiting-user-pr-approval`. Only explicit approval of that unchanged candidate permits the dedicated-branch push and ready-for-review PR creation or update. It never merges the PR.
@@ -125,7 +125,9 @@ The run stops the delivery phase rather than pushing elsewhere, force-pushing, o
 | `quiescence_scans` | `1..10` | `3` |
 | `parallelism` | `auto`, `1..32` | `auto` |
 | `network` | `off`, `public-read` | `public-read` |
+| `candidate_retry_limit` | `0..10` | `3` |
 | `rewrite_policy` | `surgical`, `allow`, `aggressive` | `aggressive` |
 | `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` |
 | `delivery` | `none`, `branch`, `pull-request` | `pull-request` |
+| `permission_fallback` | `fork`, `block` | `fork` |
 | `pr_state` | `draft`, `ready` | `ready` |
