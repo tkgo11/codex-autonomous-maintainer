@@ -60,7 +60,8 @@ $autonomous-maintainer resume [key=value ...]
 | `max_epochs` | integer `1..100` | `50` | Maximum complete discover-transform-rescan epochs. |
 | `quiescence_scans` | integer `1..10` | `3` | Consecutive clean full-matrix scans required. |
 | `parallelism` | `auto` or integer `1..32` | `auto` | Maximum independent discovery or verification lanes. |
-| `network` | `off`, `public-read` | `public-read` | Authoritative public read-only research. |
+| `network` | `off`, `public-read` | `public-read` | Network ceiling; `off` prohibits all network calls, including remote delivery. |
+| `candidate_retry_limit` | integer `0..10` | `3` | Additional attempts per failed candidate after its initial attempt. |
 | `rewrite_policy` | `surgical`, `allow`, `aggressive` | `aggressive` | Whether replacements are avoided, allowed, or actively competed. |
 | `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` | Preservation boundary. |
 | `delivery` | `none`, `branch`, `pull-request` | `pull-request` | Remote delivery behavior. |
@@ -77,11 +78,17 @@ features, dependencies, compatibility, simplification, dead-code
 
 Validation rules:
 
-- `max_epochs >= quiescence_scans`.
-- `mode=report` forces `commit=false` and `delivery=none`.
+- Parse comma-separated `focus` categories; bare `resume` means `resume=true`. Reject malformed values and conflicting duplicates before mutation.
+- `mode=report` forces `commit=false` and `delivery=none`; `commit=false` also forces `delivery=none`.
+- `network=off` prohibits fetch, authentication lookup, dependency downloads, remote research, fork creation, push, and PR operations. Retain requested delivery as pending and continue independently safe local work; report a delivery blocker rather than silently changing the option.
+- `network=public-read` permits public research. Authenticated reads and remote writes are permitted only as required by separately authorized delivery; never upload private source, logs, or secrets to research services.
 - `feature_policy=proactive` enables discovery and implementation of new repository-aligned features; it does not authorize breaking accepted behavior for existing inputs.
-- `compatibility=observable-output` protects observable effects, not file layout, private APIs, dependencies, algorithms, or architecture.
-- `rewrite_policy=aggressive` prohibits smallest-diff bias and requires replacement candidates for systemic findings.
+- `max_epochs` must be at least `quiescence_scans`.
+- `compatibility=observable-output` protects supported observable effects except evidenced corrections; it does not preserve file layout, private APIs, dependencies, algorithms, or architecture.
+- `compatibility=public-contract` preserves documented and supported public interfaces and effects; separately record observed but undocumented behavior before deciding whether it is relied upon.
+- `compatibility=strict-internals` additionally preserves existing internal interfaces and layout.
+- `rewrite_policy=surgical` confines changes to localized fixes and additions; `allow` permits evidence-backed larger replacements; `aggressive` actively compares them. Compatibility and user constraints take precedence.
+- `rewrite_policy=aggressive` prohibits smallest-diff bias and requires real replacement candidates for systemic findings.
 - `delivery=pull-request` permits only a dedicated remote branch and PR after final verification and the mandatory pre-PR user inspection gate.
 - `permission_fallback=fork` authorizes automatic validated-fork creation or reuse and fork delivery preparation; it never bypasses the mandatory user approval required before creating or updating the cross-repository PR.
 - Unknown options or focus categories are errors.
@@ -230,7 +237,7 @@ Create or resume:
   delivery.json
 ```
 
-`findings.jsonl`, `hypotheses.jsonl`, and `transformations.jsonl` are append-only; highest revision wins. Persist atomically. A live or uncertain competing owner blocks writes.
+`findings.jsonl`, `hypotheses.jsonl`, and `transformations.jsonl` are append-only; highest revision wins. Persist records atomically and acquire `run.lock` with exclusive creation, not an existence check followed by a write. Record schema version, run ID, repository/worktree identity, owner token, host, process/session identity, start time, and heartbeat. A live or uncertain competing owner blocks writes to its scope. Reclaim a stale lock only with evidence its owner ended; age alone is insufficient. Release only a lock whose owner token still matches. Redact secrets and exclude raw operational state from commits and delivery fingerprints.
 
 Each component-category matrix cell records files examined, commands run, hypotheses tested, findings, exclusions, confidence, and last epoch. Empty cells prohibit completion.
 
@@ -268,7 +275,7 @@ No area is complete until covered or explicitly excluded with evidence.
 
 ## 12. Baseline and Behavioral Capture
 
-Run all applicable repository-native diagnostics: format, lint, type checks, static analysis, tests, coverage, mutation tests, fuzz targets, builds, packaging, examples, schema checks, security checks, dependency checks, license checks, benchmarks, startup probes, and smoke tests.
+Inspect commands before execution for writes, network access, external services, and install hooks. Run checks in disposable fixtures or isolated worktrees when they mutate data; never infer permission to contact production from test configuration. Use non-mutating formatter/check modes for baseline capture. Run all applicable repository-native diagnostics: format, lint, type checks, static analysis, tests, coverage, mutation tests, fuzz targets, builds, packaging, examples, schema checks, security checks, dependency checks, license checks, benchmarks, startup probes, and smoke tests.
 
 Before broad transformation, capture behavior using combinations of:
 
@@ -348,8 +355,8 @@ Never discard a valid finding merely because it is low severity, broad in scope,
 
 A change is eligible when:
 
-- evidence strength is at least 3 of 5;
-- confidence is at least 3 of 5;
+- direct evidence demonstrates a reproducible defect, contract mismatch, measurable improvement, or objectively verifiable maintainability/architecture benefit;
+- the verification method distinguishes success from failure and the evidence is strong enough for the change's risk;
 - a feature candidate satisfies the selected `feature_policy` and has testable acceptance criteria;
 - verification is feasible;
 - accepted contracts are known or can be captured;
@@ -450,7 +457,7 @@ Normalize only proven nondeterminism such as timestamps, random IDs, ports, path
 
 ## 20. Verification and Rollback
 
-A wave becomes `applied` only after fresh targeted and affected-closure checks pass, including differential equivalence, regression tests, negative tests, types, lint, static analysis, build, package, examples, schemas, security checks, compatibility checks, mutation or fuzz checks where useful, benchmarks where relevant, secret scan, diff hygiene, and user-work preservation.
+Select verification from changed contracts and reachable consumers. A wave becomes `applied` only after the relevant repository gates, focused regression checks, affected-closure verification, diff hygiene, secret checks, and user-work preservation pass. Use differential tests for replacements and benchmarks for performance claims; add types, lint, build, packaging, security, mutation, fuzz, schema, or compatibility checks when applicable or required by repository policy. Record every check as passed, failed, unavailable, timed-out, or not-applicable with justification. Missing optional tooling is a blind spot; a missing required check blocks the affected wave.
 
 Verification MUST include the changed implementation and all reachable consumers. Passing only a focused test is insufficient for a broad replacement.
 
@@ -462,7 +469,9 @@ If a replacement fails, retain its evidence and compare why; do not automaticall
 
 For `commit=checkpoint`, create one coherent commit per verified wave. For `commit=final`, create one final verified commit. For `commit=false`, leave verified changes uncommitted and disable remote delivery.
 
-Always stage explicit owned paths, inspect staged diffs, and record commit IDs. Commit messages SHOULD state root cause, transformation, and verified contract.
+Always stage explicit owned paths, inspect staged diffs, and record commit IDs. Preserve pre-existing staged work: never commit an index containing unrelated user changes; use an isolated worktree/index or block the affected commit. Never stage operational state, unrelated untracked files, or secrets. Commit messages SHOULD state root cause, transformation, and verified contract.
+
+If final verification finds an empty candidate diff, record a verified no-op and complete without remote identity lookup, an empty commit, fork, push, or PR.
 
 No commit policy permits direct push to the default branch, force push, history rewriting, or inclusion of unrelated work.
 
@@ -628,9 +637,9 @@ If verified changes exist and delivery remains safe, a partial-blocked run SHOUL
 
 ## 27. Report Mode
 
-With `mode=report`, perform inventory, contract capture, baseline, complete discovery matrix, history and upstream research, replacement tournament, dependency planning, verification design, migration design, risk analysis, and delivery planning without implementation edits, commits, pushes, or PR creation.
+With `mode=report`, perform inventory, contract capture, baseline, complete discovery matrix, permitted history and upstream research, replacement comparison, dependency planning, verification design, migration design, risk analysis, and delivery planning. Do not modify the target worktree, index, refs, repository configuration, locks, or remote state. Save reports and state outside the target repository; run checks that write caches, build outputs, or fixtures only in an isolated copy/worktree when creating that isolation is authorized, otherwise record them as unavailable. Do not create a run branch or fork.
 
-Return a prioritized transformation program containing every eligible finding, not only the most important few. Include subsystem and whole-codebase replacement options whenever evidence supports them.
+Return every eligible finding, not only a short prioritized sample. Include subsystem and whole-codebase replacement options whenever evidence supports them. Report mode ends with `report-only` once permitted discovery and analysis are recorded, including coverage gaps and blockers; it does not require apply-mode convergence, commits, or delivery.
 
 ## 28. Progress and Result Semantics
 
