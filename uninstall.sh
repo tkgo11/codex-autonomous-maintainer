@@ -6,6 +6,7 @@ SCOPE="user"
 PROJECT_DIR=""
 DRY_RUN=0
 YES=0
+MANAGED_FILES=("SKILL.md" "agents/openai.yaml" "assets/icon.svg")
 
 usage() {
   cat <<'USAGE'
@@ -82,9 +83,12 @@ fi
 TARGET_DIR="$TARGET_ROOT/$SKILL_NAME"
 TARGET_FILE="$TARGET_DIR/SKILL.md"
 
-if [[ -L "$TARGET_DIR" || -L "$TARGET_FILE" ]]; then
-  fail "refusing to uninstall through a symbolic-link destination"
-fi
+for candidate in "$TARGET_DIR" "$TARGET_DIR/agents" "$TARGET_DIR/assets"; do
+  [[ ! -L "$candidate" ]] || fail "refusing to uninstall through a symbolic-link destination: $candidate"
+done
+for rel in "${MANAGED_FILES[@]}"; do
+  [[ ! -L "$TARGET_DIR/$rel" ]] || fail "refusing to remove symbolic link: $TARGET_DIR/$rel"
+done
 
 if [[ ! -f "$TARGET_FILE" ]]; then
   printf 'not installed: %s\n' "$TARGET_FILE"
@@ -94,7 +98,7 @@ fi
 first_name="$(sed -n '/^---$/,/^---$/s/^name:[[:space:]]*//p' "$TARGET_FILE" | head -n 1)"
 [[ "$first_name" == "$SKILL_NAME" ]] || fail "refusing to remove an unexpected skill: name=$first_name"
 
-printf 'remove: %s\n' "$TARGET_DIR"
+printf 'remove managed package files from: %s\n' "$TARGET_DIR"
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   printf 'dry-run: no files removed\n'
@@ -105,19 +109,26 @@ if [[ "$YES" -ne 1 ]]; then
   if [[ ! -t 0 ]]; then
     fail "confirmation required in non-interactive mode; pass --yes"
   fi
-  read -r -p "Remove this skill directory? [y/N] " answer
+  read -r -p "Remove managed skill package files? [y/N] " answer
   [[ "$answer" == "y" || "$answer" == "Y" ]] || {
     printf 'cancelled\n'
     exit 0
   }
 fi
 
-find "$TARGET_DIR" -mindepth 1 -maxdepth 1 -type f -name 'SKILL.md.backup-*' -print >/dev/null 2>&1 || true
-rm -f -- "$TARGET_FILE"
+for rel in "${MANAGED_FILES[@]}"; do
+  target_file="$TARGET_DIR/$rel"
+  if [[ -f "$target_file" ]]; then
+    rm -f -- "$target_file"
+  fi
+done
 
-# Preserve timestamped backups or any unexpected files instead of deleting them.
+rmdir "$TARGET_DIR/agents" 2>/dev/null || true
+rmdir "$TARGET_DIR/assets" 2>/dev/null || true
+
+# Preserve backups and any unexpected user-managed files.
 if rmdir "$TARGET_DIR" 2>/dev/null; then
-  printf 'removed skill directory\n'
+  printf 'removed skill package directory\n'
 else
-  printf 'removed SKILL.md; preserved other files in %s\n' "$TARGET_DIR"
+  printf 'removed managed package files; preserved other files in %s\n' "$TARGET_DIR"
 fi
