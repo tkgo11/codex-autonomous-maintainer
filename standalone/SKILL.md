@@ -310,7 +310,9 @@ Any review or QA regression creates or reopens a finding.
 
 For `commit=checkpoint`, commit each verified wave. For `commit=final`, commit once after the final gate. For `commit=false`, disable delivery.
 
-Stage explicit owned paths and inspect staged diffs. Never push the default branch or force-push.
+Stage explicit owned paths and inspect staged diffs. Preserve pre-existing staged work: do not commit an index containing user changes. Use an isolated worktree/index or block the affected commit. Never stage operational state, unrelated untracked files, or secrets. Never push the default branch or force-push.
+
+If final verification finds an empty candidate diff, record a verified no-op and complete without remote identity lookup, an empty commit, fork, push, or PR.
 
 ### Pull-request partitioning algorithm
 
@@ -365,7 +367,7 @@ Ask the user to explicitly approve or reject that exact candidate. Initial activ
 
 Before acting on approval, reacquire ownership and revalidate repository identity, user work, refs, diff, evidence, topology, existing-PR status, title, body, and draft state. Any change invalidates approval and requires a new packet.
 
-After valid approval, push the dedicated branch without force, then create or update the PR in the canonical upstream against its default branch. Use the upstream branch as head in direct mode or `<authenticated-login>:<dedicated-branch>` in fork mode, enable maintainer edits when supported, apply the approved draft state, title, and body, and record approval evidence plus full PR metadata. Search both topology forms first so resume updates instead of duplicates.
+After valid approval, push the dedicated branch without force, then create or update the PR in the canonical upstream against its default branch. Use the upstream branch as head in direct mode or `<authenticated-login>:<dedicated-branch>` in fork mode, enable maintainer edits when supported, apply the approved draft state, title, and body, and record approval evidence plus full PR metadata. Search both topology forms first so resume updates instead of duplicates. If a push or PR mutation times out or returns an ambiguous result, read back the exact remote head and matching PR before retrying; reuse an existing matching result and never retry blindly. Record a successful push even if subsequent PR creation fails. An unrelated base advance requires reassessing affected compatibility and mergeability, not automatically repeating unaffected tests.
 
 If the user rejects or requests changes, do not create or update the PR. Apply authorized revisions, rerun affected verification and the final gate, then present a new fingerprinted packet. The user may instead choose `delivery=branch` or `delivery=none`.
 
@@ -378,24 +380,24 @@ Never merge it automatically.
 After each wave set:
 
 1. refresh inventory, contracts, dependencies, history hotspots, and matrix coverage;
-2. rerun baseline and newly relevant checks;
-3. repeat every enabled lane against affected and previously weak components;
+2. rerun affected baseline and newly relevant checks; retain unaffected evidence only when source, dependencies, configuration, and tool fingerprints still match;
+3. repeat every enabled discovery lane against affected, previously weak, or materially changed components;
 4. search adjacent defects, inverse cases, obsolete shims, duplicate implementations, and migration debris;
 5. run a fresh-design review that assumes the architecture may still be wrong;
 6. reopen regressions and add newly exposed opportunities;
-7. reset the clean count when eligible work, an untested or stale cell, a blind spot, or a worsened signal appears.
+7. reset the clean count when eligible unblocked work, a required untested or stale cell, or a worsened signal appears.
 
-A scan is clean only when every matrix cell is current, every hypothesis is terminal, every eligible finding is terminal, and verification is fresh.
+A scan is clean only when every matrix cell is current, every hypothesis is resolved or explicitly blocked, all eligible unblocked findings are applied and verified, and required verification is fresh. Findings use `discovered`, `eligible`, `in-progress`, `applied-verified`, `rejected-with-evidence`, `superseded`, or `blocked`; blocked work remains visible and prevents an unqualified `complete`. A newer epoch alone does not stale unchanged evidence. Track optional-tool blind spots separately from required verification blockers.
 
-Use completeness, adversarial failure recovery, and simplification/deletion/replacement emphases in sequence. Require `quiescence_scans` consecutive clean scans. At `max_epochs`, persist `resume-required`.
+Use completeness, adversarial failure recovery, and simplification/deletion/replacement emphases in sequence. Require `quiescence_scans` consecutive clean scans with distinct review emphases; do not rerun identical checks solely to increment the count. One epoch is one discovery-through-rescan cycle, including a clean cycle without edits. At `max_epochs`, persist `resume-required`. When only known blockers remain and no safe work can advance, return `partial-blocked` immediately rather than consuming empty epochs. At a real execution limit, checkpoint exact remaining work without claiming completion.
 
 ## 22. Report Mode and Hard Stops
 
-Report mode performs inventory, contract capture, baseline, complete discovery matrix, history and upstream research, replacement tournament, dependency planning, migration design, verification design, risk analysis, and delivery planning without edits, commits, pushes, or PR creation.
+Report mode performs inventory, contract capture, baseline, complete discovery matrix, permitted history and upstream research, replacement comparison, dependency planning, migration design, verification design, risk analysis, and delivery planning. Do not modify the target worktree, index, refs, repository configuration, locks, or remote state. Save reports and state outside the target repository; run checks that write caches, build outputs, or fixtures only in an isolated copy/worktree when creating that isolation is authorized, otherwise record them as unavailable. Do not create a run branch or fork.
 
-Return every eligible finding, not only a short prioritized sample.
+Return every eligible finding, not only a short prioritized sample. Report mode ends with `report-only` once permitted discovery and analysis are recorded, including coverage gaps and blockers; it does not require applying findings, apply-mode convergence, commits, or delivery.
 
-Stop writes only for cancellation, prohibited boundaries, unresolved Git operations, corruption, inability to preserve user work, unavailable authoritative contract for risky behavior change, unsafe rollback, missing credentials, unresolved policy, repeated environment failure, or epoch limit.
+Stop writes only for cancellation, prohibited boundaries, unresolved Git operations, corruption, inability to preserve user work, unavailable authoritative contract for a risky behavior change, unsafe rollback, unresolved policy, repeated environment failure, or epoch limit. Scope each stop to dependent work; missing credentials stop only operations that need them.
 
 Do not stop because the diff is large, many findings exist, passing tests create comfort, a rewrite is uncomfortable, easy fixes are complete, low-priority eligible work remains, or the upstream is read-only while safe fork delivery is available.
 
@@ -416,7 +418,7 @@ Before `complete`, prove:
 - independent review and adversarial QA are clean;
 - required clean scans passed;
 - unrelated user work is preserved;
-- for `delivery=pull-request`, the exact candidate received explicit user approval, the dedicated branch was pushed to the upstream or validated fork, and the upstream PR was created or updated.
+- delivery obeys the selected mode and applicable approval gate; for a nonempty `delivery=pull-request` candidate, the exact candidate received explicit user approval, the dedicated branch was pushed to the upstream or validated fork, and the upstream PR was created or updated. A verified empty diff completes without remote mutation.
 
 Write `reports/final.md` with matrix coverage, findings, falsified hypotheses, code and dependencies deleted, architecture replaced, equivalence corpus, checks, benchmark deltas, commits, upstream/fork/PR metadata, blockers, blind spots, durable artifacts, and resume command.
 
