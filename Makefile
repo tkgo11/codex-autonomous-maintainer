@@ -1,10 +1,16 @@
-.PHONY: validate test install-user install-user-standalone install-project install-project-standalone uninstall-user uninstall-user-standalone
+.PHONY: validate checksums checksums-check test install-user install-user-standalone install-project install-project-standalone uninstall-user uninstall-user-standalone
 
 validate:
 	python3 scripts/validate_skill.py SKILL.md
 	python3 scripts/validate_skill.py standalone/SKILL.md
 
-test: validate
+checksums:
+	python3 scripts/validate_checksums.py --write
+
+checksums-check:
+	python3 scripts/validate_checksums.py
+
+test: validate checksums-check
 	bash tests/test_installers.sh
 
 install-user:
