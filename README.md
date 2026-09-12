@@ -12,7 +12,7 @@ The project provides two variants with the same maintenance contract:
 > [!IMPORTANT]
 > The default profile is intentionally aggressive. It may add repository-aligned features, replace dependencies, redesign modules, migrate architecture, or rewrite large parts of a codebase when verification shows that the selected compatibility contract is preserved. Start with [`mode=report`](#recommended-invocations) when you only want an audit.
 
-Current version: **2.2.0**. See [CHANGELOG.md](CHANGELOG.md) for release history.
+Current version: **2.3.0**. See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## What it does
 
@@ -26,7 +26,8 @@ A full run can:
 - verify changes with repository-native checks plus contract, differential, golden, property, compatibility, or performance testing when applicable;
 - repeat complete discovery scans until convergence or a recorded blocker;
 - prepare a dedicated branch and pull-request candidate without pushing to the default branch;
-- pause immediately before PR delivery and require explicit approval of the exact fingerprinted candidate.
+- pause immediately before PR delivery and require explicit approval of the exact fingerprinted candidate;
+- install Codex-native `agents/openai.yaml` metadata and UI assets with each skill package, and validate them together with the skill.
 
 It does **not** force-push, merge, deploy, release, publish, expose secrets, overwrite unrelated work, weaken valid tests, or treat missing and failed checks as passes.
 
@@ -210,6 +211,7 @@ max_epochs=50
 quiescence_scans=3
 parallelism=auto
 network=public-read
+candidate_retry_limit=3
 rewrite_policy=aggressive
 compatibility=observable-output
 delivery=pull-request
@@ -231,7 +233,8 @@ pr_state=ready
 | `max_epochs` | integer `1..100` | `50` | Maximum complete discover-transform-rescan epochs |
 | `quiescence_scans` | integer `1..10` | `3` | Consecutive clean full scans required for convergence |
 | `parallelism` | `auto` or integer `1..32` | `auto` | Maximum independent discovery or verification lanes |
-| `network` | `off`, `public-read` | `public-read` | Allow authoritative public read-only research |
+| `network` | `off`, `public-read` | `public-read` | Set the network ceiling; `off` also blocks remote delivery |
+| `candidate_retry_limit` | integer `0..10` | `3` | Additional attempts for a failed candidate after its initial attempt |
 | `rewrite_policy` | `surgical`, `allow`, `aggressive` | `aggressive` | Avoid, permit, or actively compare replacement designs |
 | `compatibility` | `observable-output`, `public-contract`, `strict-internals` | `observable-output` | Select the behavior preservation boundary |
 | `delivery` | `none`, `branch`, `pull-request` | `pull-request` | Keep changes local, push a branch, or prepare a PR |
@@ -249,7 +252,8 @@ features, dependencies, compatibility, simplification, dead-code
 Important validation rules:
 
 - `max_epochs` must be greater than or equal to `quiescence_scans`.
-- `mode=report` forces `commit=false` and `delivery=none`.
+- `mode=report` forces `commit=false` and `delivery=none`; `commit=false` also disables remote delivery.
+- `network=off` blocks research, authentication lookup, downloads, fork creation, push, and PR operations while still allowing independently safe local work.
 - Unknown options and categories are errors.
 - Free-form constraints are durable hard constraints.
 
@@ -332,7 +336,7 @@ bash ./install.sh --variant standalone --scope user --dry-run
 
 ### Update
 
-Pull the latest repository version and reinstall with replacement enabled. The installer validates the source, creates a timestamped backup of a different existing `SKILL.md`, performs an atomic replacement, and verifies the result.
+Pull the latest repository version and reinstall with replacement enabled. The installer validates the complete package, adds missing managed metadata/assets during legacy upgrades, creates timestamped backups for conflicting managed files, performs per-file atomic replacement, and verifies every installed file.
 
 ```bash
 git pull --ff-only
@@ -364,24 +368,30 @@ Windows PowerShell:
 .\uninstall.ps1 -Variant omx -Scope user
 ```
 
-The uninstallers verify the installed skill identity and preserve backups or unexpected files instead of deleting the entire directory blindly.
+The uninstallers verify the installed skill identity, remove only the managed `SKILL.md`, metadata, and icon, and preserve backups or unexpected files instead of deleting the entire directory blindly.
 
 ## Repository layout
 
 ```text
 .
 ├── SKILL.md                  # OMX skill
-├── standalone/SKILL.md       # Framework-independent skill
-├── install.sh / install.ps1  # Safe installers
+├── agents/openai.yaml         # OMX Codex UI/invocation metadata
+├── assets/icon.svg            # OMX UI asset
+├── standalone/
+│   ├── SKILL.md               # Framework-independent skill
+│   ├── agents/openai.yaml     # Standalone Codex metadata
+│   └── assets/icon.svg        # Standalone UI asset
+├── install.sh / install.ps1  # Safe package installers
 ├── uninstall.sh / uninstall.ps1
-├── scripts/validate_skill.py # Structural validator
+├── scripts/validate_skill.py # Skill + metadata structural validator
+├── scripts/validate_checksums.py # Complete manifest validator
 ├── tests/                    # Installer and package tests
 ├── CHANGELOG.md
 ├── CHECKSUMS.txt
 └── VERSION
 ```
 
-Only the selected `SKILL.md` is required at runtime.
+The core workflow remains in the selected `SKILL.md`; installers also deploy `agents/openai.yaml` and `assets/icon.svg` so current Codex surfaces can display and invoke the skill with native metadata. Existing SKILL-only installations are upgraded by adding missing managed files without requiring `--force` when the existing skill content already matches.
 
 ## Development
 
@@ -389,6 +399,7 @@ Run all structural validation and installer tests:
 
 ```bash
 make validate
+make checksums-check
 make test
 ```
 
@@ -398,6 +409,8 @@ Direct validation:
 python3 scripts/validate_skill.py SKILL.md
 python3 scripts/validate_skill.py standalone/SKILL.md
 ```
+
+Use `make checksums` after intentional tracked-file changes to regenerate `CHECKSUMS.txt`. CI verifies that the manifest contains every tracked package file exactly once and that every digest matches.
 
 Convenience Make targets are also available for user and project installation and user-scope uninstallation.
 

@@ -9,6 +9,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$ManagedFiles = @('SKILL.md', 'agents/openai.yaml', 'assets/icon.svg')
 $SkillName = if ($Variant -eq 'standalone') {
     'autonomous-maintainer-standalone'
 } else {
@@ -27,7 +28,15 @@ if ($Scope -eq 'user') {
 $TargetDir = Join-Path $TargetRoot $SkillName
 $TargetFile = Join-Path $TargetDir 'SKILL.md'
 
-foreach ($Candidate in @($TargetDir, $TargetFile)) {
+$PathsToCheck = @(
+    $TargetDir,
+    (Join-Path $TargetDir 'agents'),
+    (Join-Path $TargetDir 'assets')
+)
+foreach ($Rel in $ManagedFiles) {
+    $PathsToCheck += Join-Path $TargetDir $Rel
+}
+foreach ($Candidate in $PathsToCheck) {
     if (Test-Path -LiteralPath $Candidate) {
         $Item = Get-Item -LiteralPath $Candidate -Force
         if ($Item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
@@ -47,19 +56,35 @@ if ($Content -notmatch $NamePattern) {
     throw "Refusing to remove a file that does not identify as $SkillName."
 }
 
-Write-Host "remove: $TargetDir"
+Write-Host "remove managed package files from: $TargetDir"
 if ($DryRun) {
     Write-Host 'dry-run: no files removed'
     exit 0
 }
 
-if ($PSCmdlet.ShouldProcess($TargetFile, 'Remove installed skill')) {
-    Remove-Item -LiteralPath $TargetFile -Force
+if ($PSCmdlet.ShouldProcess($TargetDir, 'Remove managed skill package files')) {
+    foreach ($Rel in $ManagedFiles) {
+        $TargetPath = Join-Path $TargetDir $Rel
+        if (Test-Path -LiteralPath $TargetPath -PathType Leaf) {
+            Remove-Item -LiteralPath $TargetPath -Force
+        }
+    }
+
+    foreach ($Subdir in @('agents', 'assets')) {
+        $SubdirPath = Join-Path $TargetDir $Subdir
+        if (Test-Path -LiteralPath $SubdirPath -PathType Container) {
+            $Remaining = Get-ChildItem -LiteralPath $SubdirPath -Force -ErrorAction SilentlyContinue
+            if (-not $Remaining) {
+                Remove-Item -LiteralPath $SubdirPath -Force
+            }
+        }
+    }
+
     $Remaining = Get-ChildItem -LiteralPath $TargetDir -Force -ErrorAction SilentlyContinue
     if (-not $Remaining) {
         Remove-Item -LiteralPath $TargetDir -Force
-        Write-Host 'removed skill directory'
+        Write-Host 'removed skill package directory'
     } else {
-        Write-Host "removed SKILL.md; preserved other files in $TargetDir"
+        Write-Host "removed managed package files; preserved other files in $TargetDir"
     }
 }

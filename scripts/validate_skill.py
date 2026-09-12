@@ -18,6 +18,7 @@ REQUIRED_OPTIONS = {
     "quiescence_scans",
     "parallelism",
     "network",
+    "candidate_retry_limit",
     "rewrite_policy",
     "compatibility",
     "delivery",
@@ -111,6 +112,85 @@ def parse_frontmatter(text: str) -> dict[str, str]:
     return result
 
 
+def validate_openai_metadata(skill_path: Path, skill_name: str) -> None:
+    skill_dir = skill_path.parent
+    metadata_path = skill_dir / "agents" / "openai.yaml"
+    try:
+        raw = metadata_path.read_bytes()
+    except OSError as exc:
+        fail(f"missing or unreadable Codex metadata {metadata_path}: {exc}")
+
+    if raw.startswith(b"\xef\xbb\xbf"):
+        fail(f"{metadata_path}: UTF-8 BOM is not allowed")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        fail(f"{metadata_path}: not valid UTF-8: {exc}")
+    if "\r\n" in text:
+        fail(f"{metadata_path}: use LF line endings")
+    if "\t" in text:
+        fail(f"{metadata_path}: tabs are not allowed")
+
+    lines = text.splitlines()
+    if "interface:" not in lines:
+        fail(f"{metadata_path}: missing interface mapping")
+
+    def quoted_scalar(key: str) -> str:
+        prefix = f"  {key}: "
+        values = [line[len(prefix):] for line in lines if line.startswith(prefix)]
+        if len(values) != 1:
+            fail(f"{metadata_path}: expected one {key} value")
+        token = values[0]
+        if len(token) < 2 or token[0] != '"' or token[-1] != '"':
+            fail(f"{metadata_path}: {key} must be a quoted string")
+        value = token[1:-1]
+        if '"' in value:
+            fail(f"{metadata_path}: embedded quotes are not supported in {key}")
+        return value
+
+    display_name = quoted_scalar("display_name")
+    short_description = quoted_scalar("short_description")
+    icon_small = quoted_scalar("icon_small")
+    icon_large = quoted_scalar("icon_large")
+    default_prompt = quoted_scalar("default_prompt")
+
+    if not display_name.strip():
+        fail(f"{metadata_path}: display_name must not be empty")
+    if not 25 <= len(short_description) <= 64:
+        fail(
+            f"{metadata_path}: short_description must be 25..64 characters "
+            f"(got {len(short_description)})"
+        )
+    required_invocation = "$" + skill_name
+    if required_invocation not in default_prompt:
+        fail(
+            f"{metadata_path}: default_prompt must explicitly reference "
+            f"{required_invocation}"
+        )
+
+    for key, value in (("icon_small", icon_small), ("icon_large", icon_large)):
+        if not value.startswith("./assets/") or ".." in Path(value).parts:
+            fail(f"{metadata_path}: {key} must be a safe ./assets/... path")
+        asset_path = skill_dir / value[2:]
+        if asset_path.is_symlink() or not asset_path.is_file():
+            fail(f"{metadata_path}: referenced asset does not exist: {value}")
+        if asset_path.suffix.lower() == ".svg":
+            try:
+                asset_text = asset_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as exc:
+                fail(f"{asset_path}: unreadable SVG: {exc}")
+            if "<svg" not in asset_text or "</svg>" not in asset_text:
+                fail(f"{asset_path}: malformed SVG asset")
+
+    policy_prefix = "  allow_implicit_invocation: "
+    policies = [line[len(policy_prefix):] for line in lines if line.startswith(policy_prefix)]
+    if len(policies) != 1 or policies[0] not in {"true", "false"}:
+        fail(
+            f"{metadata_path}: policy.allow_implicit_invocation must be "
+            "present exactly once as true or false"
+        )
+
+
 def validate(path: Path) -> None:
     try:
         raw = path.read_bytes()
@@ -182,7 +262,9 @@ def validate(path: Path) -> None:
     ):
         fail("unresolved template placeholder found")
 
-    print(f"ok: {path} ({line_count} lines, {len(raw)} bytes)")
+    validate_openai_metadata(path, name)
+
+    print(f"ok: {path} ({line_count} lines, {len(raw)} bytes, metadata ok)")
 
 
 def main() -> None:

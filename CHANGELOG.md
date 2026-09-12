@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.0 — 2026-09-12
+
+- Added Codex-native `agents/openai.yaml` metadata and UI assets for both the OMX and standalone variants, based on the attached standalone package and aligned with current Codex skill metadata conventions.
+- Upgraded POSIX and PowerShell installers to deploy, verify, back up, upgrade, and safely uninstall the complete managed skill package instead of copying only `SKILL.md`.
+- Added metadata validation, legacy SKILL-only upgrade coverage, package-resource lifecycle tests, and complete checksum-manifest validation that rejects missing or stale tracked files.
+- Formalized `candidate_retry_limit` in both invocation contracts and validators, and clarified network, compatibility, rewrite, report-mode, and delivery semantics.
+- Hardened durable-state locking, user-work preservation, command safety, evidence gates, risk-proportional verification, empty-diff completion, ambiguous remote-write recovery, and convergence accounting.
+- Removed arbitrary numeric evidence/confidence thresholds in favor of directly verifiable evidence and risk-sensitive proof requirements.
+- Kept the mandatory fingerprinted pre-PR inspection gate while making local maintenance independent from unavailable remote credentials or delivery metadata.
+
 ## 2.2.0 — 2026-07-30
 
 - Added a mandatory fingerprinted user-inspection gate immediately before pull-request delivery in both skill variants.
