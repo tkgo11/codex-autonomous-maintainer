@@ -40,6 +40,30 @@ def tracked_paths() -> list[str]:
     ]
     paths.sort()
 
+    try:
+        stage_result = subprocess.run(
+            ["git", "ls-files", "--stage", "-z"],
+            cwd=ROOT,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        fail(f"cannot inspect tracked file modes: {exc}")
+
+    modes: dict[str, str] = {}
+    for record in stage_result.stdout.split(b"\0"):
+        if not record:
+            continue
+        metadata, path_bytes = record.split(b"\t", 1)
+        mode = metadata.split(b" ", 1)[0].decode("ascii")
+        rel = path_bytes.decode("utf-8")
+        modes[rel] = mode
+
+    for rel in sorted(REQUIRED_EXECUTABLE):
+        if modes.get(rel) != "100755":
+            fail(f"{rel} must be tracked as executable (100755)")
+
     for rel in paths:
         path = ROOT / rel
         if path.is_symlink():
