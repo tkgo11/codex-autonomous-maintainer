@@ -214,6 +214,27 @@ cp "$ROOT/assets/icon.svg" "$QUOTED_DIR/assets/icon.svg"
 bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/quoted-project" --yes
 assert_package_removed "$QUOTED_DIR"
 
+# An unclosed quoted name is refused (validator requires a matched pair).
+UNCLOSED_QUOTE_DIR="$TMP/unclosed-quote-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$UNCLOSED_QUOTE_DIR"
+sed 's/^name: autonomous-maintainer$/name: "autonomous-maintainer/' "$ROOT/SKILL.md" > "$UNCLOSED_QUOTE_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/unclosed-quote-project" --yes >/dev/null 2>&1; then
+  echo 'expected unclosed quoted name to be refused' >&2
+  exit 1
+fi
+[[ -f "$UNCLOSED_QUOTE_DIR/SKILL.md" ]]
+
+# A document without a closing frontmatter fence is refused even when a
+# name: line appears in the body.
+UNOPENED_DIR="$TMP/unclosed-fence-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$UNOPENED_DIR"
+{ printf -- '---\ndescription: dangling\nname: autonomous-maintainer\n'; tail -n +5 "$ROOT/SKILL.md"; } > "$UNOPENED_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/unclosed-fence-project" --yes >/dev/null 2>&1; then
+  echo 'expected missing closing frontmatter fence to be refused' >&2
+  exit 1
+fi
+[[ -f "$UNOPENED_DIR/SKILL.md" ]]
+
 # --variant both installs and uninstalls each variant in one pass.
 BOTH_PROJECT="$TMP/both-project"
 mkdir -p "$BOTH_PROJECT"

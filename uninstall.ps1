@@ -62,8 +62,15 @@ function Uninstall-SkillVariant {
     $FirstName = $null
     $Frontmatter = [regex]::Match($Content, "(?s)\A---\r?\n(.*?)\r?\n---")
     if ($Frontmatter.Success) {
-        $NameMatch = [regex]::Match($Frontmatter.Groups[1].Value, '(?m)^name:\s*[''"]?([^''"\r\n]+?)[''"]?\s*$')
-        if ($NameMatch.Success) { $FirstName = $NameMatch.Groups[1].Value }
+        $NameMatch = [regex]::Match($Frontmatter.Groups[1].Value, '(?m)^name:\s*(.*?)\s*$')
+        if ($NameMatch.Success) {
+            $FirstName = $NameMatch.Groups[1].Value
+            if ($FirstName.Length -ge 2 -and
+                ($FirstName[0] -eq '"' -or $FirstName[0] -eq "'") -and
+                $FirstName[-1] -eq $FirstName[0]) {
+                $FirstName = $FirstName.Substring(1, $FirstName.Length - 2)
+            }
+        }
     }
     if ($FirstName -ne $SkillName) {
         throw "Refusing to remove an unexpected skill: name=$FirstName"
