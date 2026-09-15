@@ -111,6 +111,8 @@ $autonomous-maintainer
 
 The default invocation performs repository-wide apply mode and prepares a ready pull request, but it still stops for inspection before any candidate branch push or PR creation/update.
 
+See [examples/invocations.md](examples/invocations.md) for explicit-option invocations and approval flows, and [examples/AGENTS.md.snippet](examples/AGENTS.md.snippet) for a repository-policy excerpt.
+
 ## Choosing a variant
 
 Choose **Standalone** unless you already use OMX or specifically want its specialist workflows.
@@ -390,20 +392,25 @@ The uninstallers verify the installed skill identity, remove only the managed `S
 
 ```text
 .
-├── SKILL.md                  # OMX skill
-├── agents/openai.yaml         # OMX Codex UI/invocation metadata
-├── assets/icon.svg            # OMX UI asset
+├── SKILL.md                       # OMX skill
+├── agents/openai.yaml             # OMX Codex UI/invocation metadata
+├── assets/icon.svg                # OMX UI asset
 ├── standalone/
-│   ├── SKILL.md               # Framework-independent skill
-│   ├── agents/openai.yaml     # Standalone Codex metadata
-│   └── assets/icon.svg        # Standalone UI asset
-├── install.sh / install.ps1  # Safe package installers
+│   ├── SKILL.md                   # Framework-independent skill
+│   ├── agents/openai.yaml         # Standalone Codex metadata
+│   └── assets/icon.svg            # Standalone UI asset
+├── install.sh / install.ps1       # Safe package installers
 ├── uninstall.sh / uninstall.ps1
-├── scripts/validate_skill.py # Skill + metadata structural validator
-├── scripts/validate_checksums.py # Complete manifest validator
-├── tests/                    # Installer and package tests
+├── scripts/validate_skill.py      # Skill + metadata structural validator
+├── scripts/validate_checksums.py  # Complete manifest validator
+├── scripts/validate_release.py    # VERSION/CHANGELOG/README consistency
+├── tests/                         # Installer and package tests
+├── examples/                      # Invocation examples + AGENTS.md snippet
+├── .github/workflows/             # CI validation
+├── Makefile                       # Validation and install targets
 ├── CHANGELOG.md
 ├── CHECKSUMS.txt
+├── LICENSE.md
 └── VERSION
 ```
 

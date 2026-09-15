@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"
 cleanup() { rm -rf -- "$TMP"; }
 trap cleanup EXIT
@@ -40,7 +40,7 @@ cp "$ROOT/agents/openai.yaml" "$FIXTURE/agents/openai.yaml"
 cp "$ROOT/assets/icon.svg" "$FIXTURE/assets/icon.svg"
 
 # A skill document whose invocation table drops an enforced option must fail.
-sed '/^| `permission_fallback`/d' "$ROOT/SKILL.md" > "$FIXTURE/SKILL.md"
+sed '/^| .permission_fallback./d' "$ROOT/SKILL.md" > "$FIXTURE/SKILL.md"
 if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE/SKILL.md" >/dev/null 2>&1; then
   echo 'expected option-table drift to fail validation' >&2
   exit 1
@@ -102,7 +102,6 @@ bash "$ROOT/install.sh" --scope user
 
 bash "$ROOT/install.sh" --variant standalone --scope user
 STANDALONE_USER_DIR="$HOME/.codex/skills/autonomous-maintainer-standalone"
-STANDALONE_USER_FILE="$STANDALONE_USER_DIR/SKILL.md"
 assert_package "$ROOT/standalone" "$STANDALONE_USER_DIR"
 bash "$ROOT/install.sh" --variant standalone --scope user
 
