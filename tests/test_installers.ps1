@@ -209,6 +209,32 @@ try {
     )
     Assert-PackageRemoved -TargetDir $QuotedDir
 
+    # An unclosed quoted name is refused (validator requires a matched pair).
+    $UnclosedQuoteDir = Join-Path $Temp 'unclosed-quote-project/.codex/skills/autonomous-maintainer'
+    New-Item -ItemType Directory -Path $UnclosedQuoteDir -Force | Out-Null
+    (Get-Content -LiteralPath (Join-Path $Root 'SKILL.md') -Raw) -replace '(?m)^name: autonomous-maintainer$', 'name: "autonomous-maintainer' |
+        Set-Content -LiteralPath (Join-Path $UnclosedQuoteDir 'SKILL.md')
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'unclosed-quote-project'), '-Confirm:$false'
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $UnclosedQuoteDir 'SKILL.md') -PathType Leaf)) {
+        throw 'Uninstaller removed a skill with an unclosed quoted name'
+    }
+
+    # A document without a closing frontmatter fence is refused even when a
+    # name: line appears in the body.
+    $UnclosedFenceDir = Join-Path $Temp 'unclosed-fence-project/.codex/skills/autonomous-maintainer'
+    New-Item -ItemType Directory -Path $UnclosedFenceDir -Force | Out-Null
+    $Body = (Get-Content -LiteralPath (Join-Path $Root 'SKILL.md')) | Select-Object -Skip 4
+    @('---', 'description: dangling', 'name: autonomous-maintainer') + $Body |
+        Set-Content -LiteralPath (Join-Path $UnclosedFenceDir 'SKILL.md')
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'unclosed-fence-project'), '-Confirm:$false'
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $UnclosedFenceDir 'SKILL.md') -PathType Leaf)) {
+        throw 'Uninstaller removed a skill without closing frontmatter fence'
+    }
+
     # -Variant both installs and uninstalls each variant in one pass.
     $BothProject = Join-Path $Temp 'both-project'
     New-Item -ItemType Directory -Path $BothProject -Force | Out-Null

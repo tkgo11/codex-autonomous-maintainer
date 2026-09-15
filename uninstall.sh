@@ -106,7 +106,12 @@ uninstall_variant() {
   fi
 
   local first_name first_char last_char
-  first_name="$(sed -n '/^---$/,/^---$/s/^name:[[:space:]]*//p' "$target_file" | head -n 1)"
+  first_name="$(awk '
+    NR == 1 { if ($0 != "---") exit; next }
+    /^---$/ { closed = 1; exit }
+    !done && sub(/^name:[[:space:]]*/, "") { name = $0; done = 1 }
+    END { if (closed) print name }
+  ' "$target_file")"
   first_name="${first_name%"${first_name##*[![:space:]]}"}"
   if [[ ${#first_name} -ge 2 ]]; then
     first_char="${first_name:0:1}"
