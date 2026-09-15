@@ -3,6 +3,7 @@
 validate:
 	python3 scripts/validate_skill.py SKILL.md
 	python3 scripts/validate_skill.py standalone/SKILL.md
+	python3 scripts/validate_release.py
 
 checksums:
 	python3 scripts/validate_checksums.py --write
@@ -12,6 +13,11 @@ checksums-check:
 
 test: validate checksums-check
 	bash tests/test_installers.sh
+	@if command -v pwsh >/dev/null 2>&1; then \
+		pwsh -NoLogo -NoProfile -NonInteractive -File tests/test_installers.ps1; \
+	else \
+		echo "pwsh not found; skipping PowerShell installer tests"; \
+	fi
 
 install-user:
 	bash ./install.sh --scope user
