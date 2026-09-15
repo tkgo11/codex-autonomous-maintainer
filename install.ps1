@@ -28,8 +28,8 @@ foreach ($Rel in $ManagedFiles) {
     }
 }
 
-$Python = Get-Command python3 -ErrorAction SilentlyContinue
-if (-not $Python) { $Python = Get-Command python -ErrorAction SilentlyContinue }
+$Python = Get-Command python3 -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+if (-not $Python) { $Python = Get-Command python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1 }
 if ($Python) {
     & $Python.Source (Join-Path $ScriptDir 'scripts/validate_skill.py') (Join-Path $SourceDir 'SKILL.md')
     if ($LASTEXITCODE -ne 0) { throw 'Skill package validation failed' }
@@ -42,6 +42,9 @@ if ($Scope -eq 'user') {
     $TargetRoot = Join-Path $CodexRoot 'skills'
 } else {
     if ([string]::IsNullOrWhiteSpace($ProjectDir)) { $ProjectDir = (Get-Location).Path }
+    if (-not (Test-Path -LiteralPath $ProjectDir -PathType Container)) {
+        throw "Project directory does not exist: $ProjectDir"
+    }
     $ResolvedProject = (Resolve-Path -LiteralPath $ProjectDir).Path
     $TargetRoot = Join-Path $ResolvedProject '.codex/skills'
 }

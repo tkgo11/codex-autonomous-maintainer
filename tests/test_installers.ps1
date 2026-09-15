@@ -151,6 +151,64 @@ try {
     )
     Assert-PackageRemoved -TargetDir $OmxUserDir
 
+    # Invalid scope and missing project directories must fail cleanly.
+    Invoke-PwshFile -File $Install -ScriptArgs @('-Scope', 'invalid') -ExpectFailure
+    Invoke-PwshFile -File $Install -ScriptArgs @(
+        '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'no-such-dir')
+    ) -ExpectFailure
+
+    # Uninstall reports a missing skill without removing anything.
+    $EmptyProject = Join-Path $Temp 'empty-project'
+    New-Item -ItemType Directory -Path $EmptyProject -Force | Out-Null
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $EmptyProject, '-Confirm:$false'
+    )
+
+    # Uninstall dry-run preserves managed files.
+    $DryUninstall = Join-Path $Temp 'dry-uninstall-project'
+    New-Item -ItemType Directory -Path $DryUninstall -Force | Out-Null
+    Invoke-PwshFile -File $Install -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $DryUninstall
+    )
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $DryUninstall, '-DryRun', '-Confirm:$false'
+    )
+    if (-not (Test-Path -LiteralPath (Join-Path $DryUninstall '.codex/skills/autonomous-maintainer/SKILL.md') -PathType Leaf)) {
+        throw 'Dry-run uninstall removed SKILL.md'
+    }
+
+    # Non-interactive uninstall without -Confirm:$false refuses and preserves files.
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $DryUninstall
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $DryUninstall '.codex/skills/autonomous-maintainer/SKILL.md') -PathType Leaf)) {
+        throw 'Unconfirmed uninstall removed SKILL.md'
+    }
+
+    # A SKILL.md identifying as a different skill is refused and preserved.
+    $MismatchDir = Join-Path $Temp 'mismatch-project/.codex/skills/autonomous-maintainer'
+    New-Item -ItemType Directory -Path $MismatchDir -Force | Out-Null
+    (Get-Content -LiteralPath (Join-Path $Root 'SKILL.md') -Raw) -replace '(?m)^name: autonomous-maintainer$', 'name: other-skill' |
+        Set-Content -LiteralPath (Join-Path $MismatchDir 'SKILL.md')
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'mismatch-project'), '-Confirm:$false'
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $MismatchDir 'SKILL.md') -PathType Leaf)) {
+        throw 'Uninstaller removed a mismatched skill'
+    }
+
+    # A quoted frontmatter name still identifies the skill for uninstall.
+    $QuotedDir = Join-Path $Temp 'quoted-project/.codex/skills/autonomous-maintainer'
+    New-Item -ItemType Directory -Path (Join-Path $QuotedDir 'agents'), (Join-Path $QuotedDir 'assets') -Force | Out-Null
+    (Get-Content -LiteralPath (Join-Path $Root 'SKILL.md') -Raw) -replace '(?m)^name: autonomous-maintainer$', 'name: "autonomous-maintainer"' |
+        Set-Content -LiteralPath (Join-Path $QuotedDir 'SKILL.md')
+    Copy-Item -LiteralPath (Join-Path $Root 'agents/openai.yaml') -Destination (Join-Path $QuotedDir 'agents/openai.yaml')
+    Copy-Item -LiteralPath (Join-Path $Root 'assets/icon.svg') -Destination (Join-Path $QuotedDir 'assets/icon.svg')
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'quoted-project'), '-Confirm:$false'
+    )
+    Assert-PackageRemoved -TargetDir $QuotedDir
+
     Write-Host 'ok: PowerShell installer smoke tests passed'
 } finally {
     if (Test-Path -LiteralPath $Temp) {

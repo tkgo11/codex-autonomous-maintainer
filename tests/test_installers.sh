@@ -167,4 +167,52 @@ bash "$ROOT/uninstall.sh" --scope user --yes
 assert_package_removed "$USER_DIR"
 # A forced-install backup remains intentionally, so the directory may remain.
 
+# Invalid scope and missing project directories must fail cleanly.
+if bash "$ROOT/install.sh" --scope invalid >/dev/null 2>&1; then
+  echo 'expected an unknown scope to fail' >&2
+  exit 1
+fi
+if bash "$ROOT/install.sh" --scope project --project-dir "$TMP/no-such-dir" >/dev/null 2>&1; then
+  echo 'expected a missing project directory to fail' >&2
+  exit 1
+fi
+
+# Uninstall reports a missing skill without removing anything.
+EMPTY_PROJECT="$TMP/empty-project"
+mkdir -p "$EMPTY_PROJECT"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$EMPTY_PROJECT" --yes | grep -q 'not installed'
+
+# Uninstall dry-run preserves managed files.
+DRY_UNINSTALL="$TMP/dry-uninstall-project"
+mkdir -p "$DRY_UNINSTALL"
+bash "$ROOT/install.sh" --scope project --project-dir "$DRY_UNINSTALL"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$DRY_UNINSTALL" --dry-run
+[[ -f "$DRY_UNINSTALL/.codex/skills/autonomous-maintainer/SKILL.md" ]]
+
+# Non-interactive uninstall without --yes refuses and preserves files.
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$DRY_UNINSTALL" < /dev/null >/dev/null 2>&1; then
+  echo 'expected non-interactive uninstall without --yes to fail' >&2
+  exit 1
+fi
+[[ -f "$DRY_UNINSTALL/.codex/skills/autonomous-maintainer/SKILL.md" ]]
+
+# A SKILL.md identifying as a different skill is refused and preserved.
+MISMATCH_DIR="$TMP/mismatch-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$MISMATCH_DIR"
+sed 's/^name: autonomous-maintainer$/name: other-skill/' "$ROOT/SKILL.md" > "$MISMATCH_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/mismatch-project" --yes >/dev/null 2>&1; then
+  echo 'expected mismatched skill identity to be refused' >&2
+  exit 1
+fi
+[[ -f "$MISMATCH_DIR/SKILL.md" ]]
+
+# A quoted frontmatter name still identifies the skill for uninstall.
+QUOTED_DIR="$TMP/quoted-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$QUOTED_DIR/agents" "$QUOTED_DIR/assets"
+sed 's/^name: autonomous-maintainer$/name: "autonomous-maintainer"/' "$ROOT/SKILL.md" > "$QUOTED_DIR/SKILL.md"
+cp "$ROOT/agents/openai.yaml" "$QUOTED_DIR/agents/openai.yaml"
+cp "$ROOT/assets/icon.svg" "$QUOTED_DIR/assets/icon.svg"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/quoted-project" --yes
+assert_package_removed "$QUOTED_DIR"
+
 echo 'ok: installer smoke tests passed'

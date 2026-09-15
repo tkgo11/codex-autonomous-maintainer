@@ -1,4 +1,4 @@
-[CmdletBinding(SupportsShouldProcess)]
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact='High')]
 param(
     [ValidateSet('omx', 'standalone')]
     [string]$Variant = 'omx',
@@ -21,6 +21,9 @@ if ($Scope -eq 'user') {
     $TargetRoot = Join-Path $CodexRoot 'skills'
 } else {
     if ([string]::IsNullOrWhiteSpace($ProjectDir)) { $ProjectDir = (Get-Location).Path }
+    if (-not (Test-Path -LiteralPath $ProjectDir -PathType Container)) {
+        throw "Project directory does not exist: $ProjectDir"
+    }
     $ResolvedProject = (Resolve-Path -LiteralPath $ProjectDir).Path
     $TargetRoot = Join-Path $ResolvedProject '.codex/skills'
 }
@@ -51,9 +54,14 @@ if (-not (Test-Path -LiteralPath $TargetFile -PathType Leaf)) {
 }
 
 $Content = Get-Content -LiteralPath $TargetFile -Raw
-$NamePattern = '(?m)^name:\s*' + [regex]::Escape($SkillName) + '\s*$'
-if ($Content -notmatch $NamePattern) {
-    throw "Refusing to remove a file that does not identify as $SkillName."
+$FirstName = $null
+$Frontmatter = [regex]::Match($Content, "(?s)\A---\r?\n(.*?)\r?\n---")
+if ($Frontmatter.Success) {
+    $NameMatch = [regex]::Match($Frontmatter.Groups[1].Value, '(?m)^name:\s*[''"]?([^''"\r\n]+?)[''"]?\s*$')
+    if ($NameMatch.Success) { $FirstName = $NameMatch.Groups[1].Value }
+}
+if ($FirstName -ne $SkillName) {
+    throw "Refusing to remove an unexpected skill: name=$FirstName"
 }
 
 Write-Host "remove managed package files from: $TargetDir"
