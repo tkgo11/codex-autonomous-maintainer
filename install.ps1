@@ -122,6 +122,7 @@ function Install-SkillVariant {
         return
     }
 
+    $script:InstalledAny = $true
     New-Item -ItemType Directory -Path (Join-Path $TargetDir 'agents') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $TargetDir 'assets') -Force | Out-Null
     $Timestamp = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
@@ -161,9 +162,12 @@ function Install-SkillVariant {
     Write-Host "installed:   $TargetDir"
 }
 
+$InstalledAny = $false
 $VariantsToInstall = if ($Variant -eq 'both') { @('omx', 'standalone') } else { @($Variant) }
 foreach ($V in $VariantsToInstall) {
     Install-SkillVariant -V $V
 }
 
-Write-Host 'next: start a new Codex session and inspect available skills'
+if ($InstalledAny) {
+    Write-Host 'next: start a new Codex session and inspect available skills'
+}

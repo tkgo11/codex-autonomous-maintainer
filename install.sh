@@ -86,6 +86,7 @@ else
 fi
 
 tmp_file=""
+INSTALLED_ANY=0
 cleanup() {
   if [[ -n "$tmp_file" ]]; then
     rm -f -- "$tmp_file"
@@ -172,6 +173,7 @@ install_variant() {
     return 0
   fi
 
+  INSTALLED_ANY=1
   mkdir -p "$target_dir/agents" "$target_dir/assets"
   local timestamp backup target_parent base
   timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -206,4 +208,6 @@ for variant in "${VARIANTS[@]}"; do
   install_variant "$variant"
 done
 
-printf 'next: start a new Codex session and inspect available skills\n'
+if (( INSTALLED_ANY )); then
+  printf 'next: start a new Codex session and inspect available skills\n'
+fi

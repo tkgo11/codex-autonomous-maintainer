@@ -105,7 +105,7 @@ uninstall_variant() {
     return 0
   fi
 
-  local first_name first_char last_char
+  local first_name first_char last_char answer
   first_name="$(awk '
     { sub(/\r$/, "") }
     NR == 1 { if ($0 != "---") exit; next }

@@ -58,9 +58,9 @@ function Uninstall-SkillVariant {
         return
     }
 
-    $Content = Get-Content -LiteralPath $TargetFile -Raw
+    $Content = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($TargetFile))
     $FirstName = $null
-    $Frontmatter = [regex]::Match($Content, "(?s)\A---\r?\n(.*?)\r?\n---")
+    $Frontmatter = [regex]::Match($Content, "(?s)\A---\r?\n(.*?)\r?\n---(?=\r?\n|\z)")
     if ($Frontmatter.Success) {
         $NameMatch = [regex]::Match($Frontmatter.Groups[1].Value, '(?m)^name:\s*(.*?)\s*$')
         if ($NameMatch.Success) {
@@ -72,7 +72,7 @@ function Uninstall-SkillVariant {
             }
         }
     }
-    if ($FirstName -ne $SkillName) {
+    if ($FirstName -cne $SkillName) {
         throw "Refusing to remove an unexpected skill: name=$FirstName"
     }
 

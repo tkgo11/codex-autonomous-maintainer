@@ -3,7 +3,8 @@
 ## Unreleased
 
 - Added `--variant both` to all four installers and uninstallers so the OMX and standalone skills can be deployed or removed in a single pass.
-- Hardened the PowerShell uninstaller to require confirmation (`ConfirmImpact=High`), matching the POSIX `--yes`/prompt gate, and normalized quoted frontmatter names during identity checks in both uninstallers.
+- Hardened the PowerShell uninstaller to require confirmation (`ConfirmImpact=High`), matching the POSIX `--yes`/prompt gate.
+- Aligned skill-identity extraction in both uninstallers with the validator contract: a closed `---` frontmatter block is required, only matched surrounding quotes are stripped, BOM-prefixed and case-mismatched names are refused, and CRLF-written skills still uninstall correctly.
 - Made PowerShell Python discovery robust on merged-bin systems where `python3` resolves to multiple application entries.
 - Added missing negative-path installer tests: invalid scope, missing project directory, not-installed uninstall, dry-run uninstall, non-interactive refusal, identity-mismatch refusal, and quoted-name acceptance.
 - Enforced the full documented invocation-option table in the skill validator and scoped metadata key checks to their `interface:`/`policy:` mappings.
