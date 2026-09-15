@@ -235,6 +235,67 @@ try {
         throw 'Uninstaller removed a skill without closing frontmatter fence'
     }
 
+    # A closing fence with trailing content is refused.
+    $DashExtraDir = Join-Path $Temp 'dash-extra-project/.codex/skills/autonomous-maintainer'
+    New-Item -ItemType Directory -Path $DashExtraDir -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $DashExtraDir 'SKILL.md'), "---`nname: autonomous-maintainer`n--- extra`n")
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'dash-extra-project'), '-Confirm:$false'
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $DashExtraDir 'SKILL.md') -PathType Leaf)) {
+        throw 'Uninstaller removed a skill with trailing content on the closing fence'
+    }
+
+    # A UTF-8 BOM before the frontmatter is refused.
+    $BomDir = Join-Path $Temp 'bom-project/.codex/skills/autonomous-maintainer'
+    New-Item -ItemType Directory -Path $BomDir -Force | Out-Null
+    [IO.File]::WriteAllBytes(
+        (Join-Path $BomDir 'SKILL.md'),
+        [byte[]](0xEF, 0xBB, 0xBF) + [Text.Encoding]::UTF8.GetBytes("---`nname: autonomous-maintainer`ndescription: x`n---`n")
+    )
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'bom-project'), '-Confirm:$false'
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $BomDir 'SKILL.md') -PathType Leaf)) {
+        throw 'Uninstaller removed a BOM-prefixed skill'
+    }
+
+    # A differently-cased skill name is refused.
+    $UpperDir = Join-Path $Temp 'upper-project/.codex/skills/autonomous-maintainer'
+    New-Item -ItemType Directory -Path $UpperDir -Force | Out-Null
+    [IO.File]::WriteAllText((Join-Path $UpperDir 'SKILL.md'), "---`nname: AUTONOMOUS-MAINTAINER`ndescription: x`n---`n")
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'upper-project'), '-Confirm:$false'
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $UpperDir 'SKILL.md') -PathType Leaf)) {
+        throw 'Uninstaller removed a case-mismatched skill'
+    }
+
+    # -WhatIf previews without removing anything.
+    $WhatIfProject = Join-Path $Temp 'whatif-project'
+    New-Item -ItemType Directory -Path $WhatIfProject -Force | Out-Null
+    Invoke-PwshFile -File $Install -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $WhatIfProject
+    )
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', $WhatIfProject, '-WhatIf'
+    )
+    if (-not (Test-Path -LiteralPath (Join-Path $WhatIfProject '.codex/skills/autonomous-maintainer/SKILL.md') -PathType Leaf)) {
+        throw 'Uninstaller removed files under -WhatIf'
+    }
+
+    # -Variant both fails fast when one variant cannot be installed, leaving
+    # the earlier variant's result intact.
+    $PartialProject = Join-Path $Temp 'partial-project'
+    New-Item -ItemType Directory -Path (Join-Path $PartialProject '.codex/skills') -Force | Out-Null
+    New-Item -ItemType File -Path (Join-Path $PartialProject '.codex/skills/autonomous-maintainer-standalone') -Force | Out-Null
+    Invoke-PwshFile -File $Install -ScriptArgs @(
+        '-Variant', 'both', '-Scope', 'project', '-ProjectDir', $PartialProject
+    ) -ExpectFailure
+    if (-not (Test-Path -LiteralPath (Join-Path $PartialProject '.codex/skills/autonomous-maintainer/SKILL.md') -PathType Leaf)) {
+        throw 'Earlier variant was not installed when a later variant failed'
+    }
+
     # -Variant both installs and uninstalls each variant in one pass.
     $BothProject = Join-Path $Temp 'both-project'
     New-Item -ItemType Directory -Path $BothProject -Force | Out-Null

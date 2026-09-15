@@ -195,6 +195,18 @@ if bash "$ROOT/uninstall.sh" --scope project --project-dir "$DRY_UNINSTALL" < /d
 fi
 [[ -f "$DRY_UNINSTALL/.codex/skills/autonomous-maintainer/SKILL.md" ]]
 
+# An invocation table with an extra option row must fail validation.
+FIXTURE_EXTRA="$TMP/fixture-extra"
+mkdir -p "$FIXTURE_EXTRA/agents" "$FIXTURE_EXTRA/assets"
+printf "| \`bogus_option\` | \`x\` | \`x\` |\n" > "$TMP/bogus-row"
+sed '/^| .feature_policy. |/r '"$TMP/bogus-row" "$ROOT/SKILL.md" > "$FIXTURE_EXTRA/SKILL.md"
+cp "$ROOT/agents/openai.yaml" "$FIXTURE_EXTRA/agents/openai.yaml"
+cp "$ROOT/assets/icon.svg" "$FIXTURE_EXTRA/assets/icon.svg"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected extra option-table row to fail validation' >&2
+  exit 1
+fi
+
 # A SKILL.md identifying as a different skill is refused and preserved.
 MISMATCH_DIR="$TMP/mismatch-project/.codex/skills/autonomous-maintainer"
 mkdir -p "$MISMATCH_DIR"
@@ -225,7 +237,8 @@ fi
 [[ -f "$UNCLOSED_QUOTE_DIR/SKILL.md" ]]
 
 # A document without a closing frontmatter fence is refused even when a
-# name: line appears in the body.
+# name: line appears in the body. (Relies on SKILL.md's body, line 5+,
+# containing no line that is exactly "---".)
 UNOPENED_DIR="$TMP/unclosed-fence-project/.codex/skills/autonomous-maintainer"
 mkdir -p "$UNOPENED_DIR"
 { printf -- '---\ndescription: dangling\nname: autonomous-maintainer\n'; tail -n +5 "$ROOT/SKILL.md"; } > "$UNOPENED_DIR/SKILL.md"
@@ -241,6 +254,47 @@ mkdir -p "$CRLF_DIR"
 printf -- '---\r\nname: autonomous-maintainer\r\ndescription: x\r\n---\r\n' > "$CRLF_DIR/SKILL.md"
 bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/crlf-project" --yes >/dev/null
 [[ ! -e "$CRLF_DIR/SKILL.md" ]]
+
+# A closing fence with trailing content is refused.
+DASH_EXTRA_DIR="$TMP/dash-extra-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$DASH_EXTRA_DIR"
+printf -- '---\nname: autonomous-maintainer\n--- extra\n' > "$DASH_EXTRA_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/dash-extra-project" --yes >/dev/null 2>&1; then
+  echo 'expected closing fence with trailing content to be refused' >&2
+  exit 1
+fi
+[[ -f "$DASH_EXTRA_DIR/SKILL.md" ]]
+
+# A UTF-8 BOM before the frontmatter is refused.
+BOM_DIR="$TMP/bom-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$BOM_DIR"
+printf -- '\xef\xbb\xbf---\nname: autonomous-maintainer\ndescription: x\n---\n' > "$BOM_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/bom-project" --yes >/dev/null 2>&1; then
+  echo 'expected BOM-prefixed skill to be refused' >&2
+  exit 1
+fi
+[[ -f "$BOM_DIR/SKILL.md" ]]
+
+# A differently-cased skill name is refused.
+UPPER_DIR="$TMP/upper-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$UPPER_DIR"
+printf -- '---\nname: AUTONOMOUS-MAINTAINER\ndescription: x\n---\n' > "$UPPER_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/upper-project" --yes >/dev/null 2>&1; then
+  echo 'expected case-mismatched skill name to be refused' >&2
+  exit 1
+fi
+[[ -f "$UPPER_DIR/SKILL.md" ]]
+
+# --variant both fails fast when one variant cannot be installed, leaving
+# the earlier variant's result intact.
+PARTIAL_PROJECT="$TMP/partial-project"
+mkdir -p "$PARTIAL_PROJECT/.codex/skills"
+touch "$PARTIAL_PROJECT/.codex/skills/autonomous-maintainer-standalone"
+if bash "$ROOT/install.sh" --variant both --scope project --project-dir "$PARTIAL_PROJECT" >/dev/null 2>&1; then
+  echo 'expected --variant both to fail on a file-blocked variant' >&2
+  exit 1
+fi
+[[ -f "$PARTIAL_PROJECT/.codex/skills/autonomous-maintainer/SKILL.md" ]]
 
 # --variant both installs and uninstalls each variant in one pass.
 BOTH_PROJECT="$TMP/both-project"
