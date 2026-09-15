@@ -96,6 +96,14 @@ if [[ ! -f "$TARGET_FILE" ]]; then
 fi
 
 first_name="$(sed -n '/^---$/,/^---$/s/^name:[[:space:]]*//p' "$TARGET_FILE" | head -n 1)"
+first_name="${first_name%"${first_name##*[![:space:]]}"}"
+if [[ ${#first_name} -ge 2 ]]; then
+  first_char="${first_name:0:1}"
+  last_char="${first_name: -1}"
+  if [[ ( "$first_char" == '"' || "$first_char" == "'" ) && "$last_char" == "$first_char" ]]; then
+    first_name="${first_name:1:-1}"
+  fi
+fi
 [[ "$first_name" == "$SKILL_NAME" ]] || fail "refusing to remove an unexpected skill: name=$first_name"
 
 printf 'remove managed package files from: %s\n' "$TARGET_DIR"
