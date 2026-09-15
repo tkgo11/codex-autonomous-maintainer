@@ -23,6 +23,15 @@ if ($Scope -eq 'user') {
     $TargetRoot = Join-Path $ResolvedProject '.codex/skills'
 }
 
+function Test-IsRegularFile {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    if ($IsWindows) { return $true }
+    $kind = (& stat -c %F -- $Path 2>$null)
+    if ($LASTEXITCODE -ne 0) { $kind = (& stat -f %HT -- $Path 2>$null) }
+    return (("$kind" -join '') -match '(?i)regular')
+}
+
 function Uninstall-SkillVariant {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact='High')]
     param([string]$V)
@@ -53,7 +62,7 @@ function Uninstall-SkillVariant {
         }
     }
 
-    if (-not (Test-Path -LiteralPath $TargetFile -PathType Leaf)) {
+    if (-not (Test-IsRegularFile $TargetFile)) {
         Write-Host "not installed: $TargetFile"
         return
     }
@@ -85,7 +94,7 @@ function Uninstall-SkillVariant {
     if ($PSCmdlet.ShouldProcess($TargetDir, 'Remove managed skill package files')) {
         foreach ($Rel in $ManagedFiles) {
             $TargetPath = Join-Path $TargetDir $Rel
-            if (Test-Path -LiteralPath $TargetPath -PathType Leaf) {
+            if (Test-IsRegularFile $TargetPath) {
                 Remove-Item -LiteralPath $TargetPath -Force
             }
         }

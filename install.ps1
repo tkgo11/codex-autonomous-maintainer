@@ -41,7 +41,7 @@ function Install-SkillVariant {
 
     foreach ($Rel in $ManagedFiles) {
         $SourcePath = Join-Path $SourceDir $Rel
-        if (-not (Test-Path -LiteralPath $SourcePath -PathType Leaf)) {
+        if (-not (Test-IsRegularFile $SourcePath)) {
             throw "Missing package file: $SourcePath"
         }
     }
@@ -92,7 +92,7 @@ function Install-SkillVariant {
         $SourcePath = Join-Path $SourceDir $Rel
         $TargetPath = Join-Path $TargetDir $Rel
         if (Test-Path -LiteralPath $TargetPath) {
-            if (-not (Test-Path -LiteralPath $TargetPath -PathType Leaf)) {
+            if (-not (Test-IsRegularFile $TargetPath)) {
                 throw "Managed package path is not a file: $TargetPath"
             }
             $SourceHash = (Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash
@@ -131,7 +131,7 @@ function Install-SkillVariant {
         $SourcePath = Join-Path $SourceDir $Rel
         $TargetPath = Join-Path $TargetDir $Rel
 
-        if (Test-Path -LiteralPath $TargetPath -PathType Leaf) {
+        if (Test-IsRegularFile $TargetPath) {
             $SourceHash = (Get-FileHash -LiteralPath $SourcePath -Algorithm SHA256).Hash
             $TargetHash = (Get-FileHash -LiteralPath $TargetPath -Algorithm SHA256).Hash
             if ($SourceHash -eq $TargetHash) { continue }
@@ -163,6 +163,15 @@ function Install-SkillVariant {
 }
 
 $InstalledAny = $false
+function Test-IsRegularFile {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    if ($IsWindows) { return $true }
+    $kind = (& stat -c %F -- $Path 2>$null)
+    if ($LASTEXITCODE -ne 0) { $kind = (& stat -f %HT -- $Path 2>$null) }
+    return (("$kind" -join '') -match '(?i)regular')
+}
+
 $VariantsToInstall = if ($Variant -eq 'both') { @('omx', 'standalone') } else { @($Variant) }
 foreach ($V in $VariantsToInstall) {
     Install-SkillVariant -V $V

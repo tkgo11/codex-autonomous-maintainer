@@ -6,6 +6,7 @@
 - Hardened the PowerShell uninstaller to require confirmation (`ConfirmImpact=High`), matching the POSIX `--yes`/prompt gate.
 - Aligned skill-identity extraction in both uninstallers with the validator contract: a closed `---` frontmatter block is required, only matched surrounding quotes are stripped, BOM-prefixed and case-mismatched names are refused, and CRLF-written skills still uninstall correctly.
 - Made PowerShell Python discovery robust on merged-bin systems where `python3` resolves to multiple application entries.
+- Prevented FIFOs and device nodes at managed paths from blocking the PowerShell tools: `Test-Path -PathType Leaf` accepts them on Linux, so both scripts now require a regular file (via `stat`) before hashing or reading, matching the POSIX `-f` checks.
 - Added missing negative-path installer tests: invalid scope, missing project directory, not-installed uninstall, dry-run uninstall, non-interactive refusal, identity-mismatch refusal, and quoted-name acceptance.
 - Enforced the full documented invocation-option table in the skill validator and scoped metadata key checks to their `interface:`/`policy:` mappings.
 - Added `scripts/validate_release.py` to keep `VERSION`, `CHANGELOG.md`, and `README.md` consistent, and extended CI with shellcheck, job timeouts, and a Linux PowerShell test leg.
