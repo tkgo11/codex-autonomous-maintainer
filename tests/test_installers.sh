@@ -33,6 +33,58 @@ assert_package_removed() {
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/SKILL.md"
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/standalone/SKILL.md"
 
+# Validator contract fixtures.
+FIXTURE="$TMP/fixture-skill"
+mkdir -p "$FIXTURE/agents" "$FIXTURE/assets"
+cp "$ROOT/agents/openai.yaml" "$FIXTURE/agents/openai.yaml"
+cp "$ROOT/assets/icon.svg" "$FIXTURE/assets/icon.svg"
+
+# A skill document whose invocation table drops an enforced option must fail.
+sed '/^| `permission_fallback`/d' "$ROOT/SKILL.md" > "$FIXTURE/SKILL.md"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected option-table drift to fail validation' >&2
+  exit 1
+fi
+
+# A quoted frontmatter name is normalized by the validator and must still pass.
+sed 's/^name: autonomous-maintainer$/name: "autonomous-maintainer"/' "$ROOT/SKILL.md" > "$FIXTURE/SKILL.md"
+python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE/SKILL.md"
+
+# Metadata keys under the wrong top-level mapping must fail.
+sed 's/^  display_name: .*$/  display_name: "Moved"/' "$ROOT/agents/openai.yaml" > "$FIXTURE/agents/openai.yaml"
+python3 - "$FIXTURE/agents/openai.yaml" <<'PY'
+import sys
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+out, moved = [], False
+for line in lines:
+    if line.startswith("  display_name:"):
+        continue
+    out.append(line)
+    if line == "policy:" and not moved:
+        out.append('  display_name: "Moved"')
+        moved = True
+open(sys.argv[1], "w", encoding="utf-8").write("\n".join(out) + "\n")
+PY
+cp "$ROOT/SKILL.md" "$FIXTURE/SKILL.md"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected metadata key under wrong mapping to fail validation' >&2
+  exit 1
+fi
+cp "$ROOT/agents/openai.yaml" "$FIXTURE/agents/openai.yaml"
+
+# Release-version consistency validator.
+RELEASE_FIXTURE="$TMP/release-fixture"
+mkdir -p "$RELEASE_FIXTURE"
+printf '9.9.9\n' > "$RELEASE_FIXTURE/VERSION"
+printf '# Changelog\n\n## 9.9.9 — 2030-01-01\n\n- entry\n' > "$RELEASE_FIXTURE/CHANGELOG.md"
+printf 'Current version: **9.9.9**.\n' > "$RELEASE_FIXTURE/README.md"
+python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE"
+printf '9.9.8\n' > "$RELEASE_FIXTURE/VERSION"
+if python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE" >/dev/null 2>&1; then
+  echo 'expected version drift to fail validation' >&2
+  exit 1
+fi
+
 if bash "$ROOT/install.sh" --variant invalid >/dev/null 2>&1; then
   echo 'expected an unknown variant to fail' >&2
   exit 1

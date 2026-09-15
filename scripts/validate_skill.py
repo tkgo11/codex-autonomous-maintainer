@@ -22,6 +22,7 @@ REQUIRED_OPTIONS = {
     "rewrite_policy",
     "compatibility",
     "delivery",
+    "permission_fallback",
     "pr_state",
 }
 
@@ -132,14 +133,31 @@ def validate_openai_metadata(skill_path: Path, skill_name: str) -> None:
         fail(f"{metadata_path}: tabs are not allowed")
 
     lines = text.splitlines()
-    if "interface:" not in lines:
-        fail(f"{metadata_path}: missing interface mapping")
+
+    top_level: dict[str, int] = {}
+    for index, line in enumerate(lines):
+        key_match = re.match(r"^([A-Za-z_][A-Za-z0-9_-]*):(?:\s|$)", line)
+        if key_match:
+            key = key_match.group(1)
+            if key in top_level:
+                fail(f"{metadata_path}: duplicate top-level key: {key}")
+            top_level[key] = index
+
+    def section_lines(key: str) -> list[str]:
+        if key not in top_level:
+            fail(f"{metadata_path}: missing {key} mapping")
+        start = top_level[key] + 1
+        end = min((i for k, i in top_level.items() if i > top_level[key]), default=len(lines))
+        return lines[start:end]
+
+    interface_lines = section_lines("interface")
+    policy_lines = section_lines("policy")
 
     def quoted_scalar(key: str) -> str:
         prefix = f"  {key}: "
-        values = [line[len(prefix):] for line in lines if line.startswith(prefix)]
+        values = [line[len(prefix):] for line in interface_lines if line.startswith(prefix)]
         if len(values) != 1:
-            fail(f"{metadata_path}: expected one {key} value")
+            fail(f"{metadata_path}: expected one {key} value under interface")
         token = values[0]
         if len(token) < 2 or token[0] != '"' or token[-1] != '"':
             fail(f"{metadata_path}: {key} must be a quoted string")
@@ -183,7 +201,7 @@ def validate_openai_metadata(skill_path: Path, skill_name: str) -> None:
                 fail(f"{asset_path}: malformed SVG asset")
 
     policy_prefix = "  allow_implicit_invocation: "
-    policies = [line[len(policy_prefix):] for line in lines if line.startswith(policy_prefix)]
+    policies = [line[len(policy_prefix):] for line in policy_lines if line.startswith(policy_prefix)]
     if len(policies) != 1 or policies[0] not in {"true", "false"}:
         fail(
             f"{metadata_path}: policy.allow_implicit_invocation must be "
@@ -244,6 +262,17 @@ def validate(path: Path) -> None:
     )
     if missing_options:
         fail("Invocation Contract is missing options: " + ", ".join(missing_options))
+
+    documented_options = set(re.findall(r"(?m)^\| `([a-z_]+)` \|", invocation))
+    if documented_options != REQUIRED_OPTIONS:
+        extra = sorted(documented_options - REQUIRED_OPTIONS)
+        missing = sorted(REQUIRED_OPTIONS - documented_options)
+        detail = []
+        if missing:
+            detail.append("missing from table: " + ", ".join(missing))
+        if extra:
+            detail.append("unknown to validator: " + ", ".join(extra))
+        fail("Invocation Contract option table drift: " + "; ".join(detail))
 
     required = [*COMMON_REQUIRED, *spec["required_phrases"]]
     missing_phrases = [phrase for phrase in required if phrase not in text]

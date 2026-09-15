@@ -403,11 +403,14 @@ make checksums-check
 make test
 ```
 
+`make validate` also checks that `VERSION`, `CHANGELOG.md`, and `README.md` agree on the current release version. `make test` runs the PowerShell installer suite as well when `pwsh` is available.
+
 Direct validation:
 
 ```bash
 python3 scripts/validate_skill.py SKILL.md
 python3 scripts/validate_skill.py standalone/SKILL.md
+python3 scripts/validate_release.py
 ```
 
 Use `make checksums` after intentional tracked-file changes to regenerate `CHECKSUMS.txt`. CI verifies that the manifest contains every tracked package file exactly once and that every digest matches.
