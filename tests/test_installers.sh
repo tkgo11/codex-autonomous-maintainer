@@ -285,6 +285,19 @@ if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/upper-project" 
 fi
 [[ -f "$UPPER_DIR/SKILL.md" ]]
 
+# A FIFO at a managed path is not a regular file: uninstall reports it
+# not-installed and install refuses, without blocking on the pipe.
+FIFO_DIR="$TMP/fifo-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$FIFO_DIR"
+mkfifo "$FIFO_DIR/SKILL.md"
+timeout 30 bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/fifo-project" --yes > "$TMP/fifo-uninstall.log" 2>&1
+grep -q 'not installed' "$TMP/fifo-uninstall.log"
+if timeout 30 bash "$ROOT/install.sh" --scope project --project-dir "$TMP/fifo-project" >/dev/null 2>&1; then
+  echo 'expected install over a FIFO managed path to fail' >&2
+  exit 1
+fi
+[[ -p "$FIFO_DIR/SKILL.md" ]]
+
 # --variant both fails fast when one variant cannot be installed, leaving
 # the earlier variant's result intact.
 PARTIAL_PROJECT="$TMP/partial-project"

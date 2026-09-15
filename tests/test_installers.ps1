@@ -284,6 +284,24 @@ try {
         throw 'Uninstaller removed files under -WhatIf'
     }
 
+    # A FIFO at a managed path is not a regular file: uninstall reports it
+    # not-installed and install refuses, without blocking on the pipe.
+    # (Unix only — mkfifo does not exist on Windows.)
+    if (-not $IsWindows) {
+        $FifoDir = Join-Path $Temp 'fifo-project/.codex/skills/autonomous-maintainer'
+        New-Item -ItemType Directory -Path $FifoDir -Force | Out-Null
+        & mkfifo (Join-Path $FifoDir 'SKILL.md')
+        Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+            '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'fifo-project'), '-Confirm:$false'
+        )
+        Invoke-PwshFile -File $Install -ScriptArgs @(
+            '-Variant', 'omx', '-Scope', 'project', '-ProjectDir', (Join-Path $Temp 'fifo-project')
+        ) -ExpectFailure
+        if (-not (Test-Path -LiteralPath (Join-Path $FifoDir 'SKILL.md') -PathType Leaf)) {
+            throw 'FIFO managed path disappeared'
+        }
+    }
+
     # -Variant both fails fast when one variant cannot be installed, leaving
     # the earlier variant's result intact.
     $PartialProject = Join-Path $Temp 'partial-project'
