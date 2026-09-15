@@ -13,7 +13,7 @@ usage() {
 Usage: ./uninstall.sh [options]
 
 Options:
-  --variant omx|standalone
+  --variant omx|standalone|both
                          Skill variant (default: omx)
   --scope user|project   Installation scope (default: user)
   --project-dir PATH     Target repository for project scope (default: current directory)
@@ -63,10 +63,11 @@ while (($#)); do
   esac
 done
 
+VARIANTS=()
 case "$VARIANT" in
-  omx) SKILL_NAME="autonomous-maintainer" ;;
-  standalone) SKILL_NAME="autonomous-maintainer-standalone" ;;
-  *) fail "--variant must be omx or standalone" ;;
+  omx|standalone) VARIANTS=("$VARIANT") ;;
+  both) VARIANTS=(omx standalone) ;;
+  *) fail "--variant must be omx, standalone, or both" ;;
 esac
 
 [[ "$SCOPE" == "user" || "$SCOPE" == "project" ]] || fail "--scope must be user or project"
@@ -80,63 +81,79 @@ else
   TARGET_ROOT="$PROJECT_DIR/.codex/skills"
 fi
 
-TARGET_DIR="$TARGET_ROOT/$SKILL_NAME"
-TARGET_FILE="$TARGET_DIR/SKILL.md"
+uninstall_variant() {
+  local variant="$1"
+  local skill_name
+  case "$variant" in
+    omx) skill_name="autonomous-maintainer" ;;
+    standalone) skill_name="autonomous-maintainer-standalone" ;;
+  esac
 
-for candidate in "$TARGET_DIR" "$TARGET_DIR/agents" "$TARGET_DIR/assets"; do
-  [[ ! -L "$candidate" ]] || fail "refusing to uninstall through a symbolic-link destination: $candidate"
-done
-for rel in "${MANAGED_FILES[@]}"; do
-  [[ ! -L "$TARGET_DIR/$rel" ]] || fail "refusing to remove symbolic link: $TARGET_DIR/$rel"
-done
+  local target_dir="$TARGET_ROOT/$skill_name"
+  local target_file="$target_dir/SKILL.md"
 
-if [[ ! -f "$TARGET_FILE" ]]; then
-  printf 'not installed: %s\n' "$TARGET_FILE"
-  exit 0
-fi
+  local candidate rel
+  for candidate in "$target_dir" "$target_dir/agents" "$target_dir/assets"; do
+    [[ ! -L "$candidate" ]] || fail "refusing to uninstall through a symbolic-link destination: $candidate"
+  done
+  for rel in "${MANAGED_FILES[@]}"; do
+    [[ ! -L "$target_dir/$rel" ]] || fail "refusing to remove symbolic link: $target_dir/$rel"
+  done
 
-first_name="$(sed -n '/^---$/,/^---$/s/^name:[[:space:]]*//p' "$TARGET_FILE" | head -n 1)"
-first_name="${first_name%"${first_name##*[![:space:]]}"}"
-if [[ ${#first_name} -ge 2 ]]; then
-  first_char="${first_name:0:1}"
-  last_char="${first_name: -1}"
-  if [[ ( "$first_char" == '"' || "$first_char" == "'" ) && "$last_char" == "$first_char" ]]; then
-    first_name="${first_name:1:-1}"
+  if [[ ! -f "$target_file" ]]; then
+    printf 'not installed: %s\n' "$target_file"
+    return 0
   fi
-fi
-[[ "$first_name" == "$SKILL_NAME" ]] || fail "refusing to remove an unexpected skill: name=$first_name"
 
-printf 'remove managed package files from: %s\n' "$TARGET_DIR"
-
-if [[ "$DRY_RUN" -eq 1 ]]; then
-  printf 'dry-run: no files removed\n'
-  exit 0
-fi
-
-if [[ "$YES" -ne 1 ]]; then
-  if [[ ! -t 0 ]]; then
-    fail "confirmation required in non-interactive mode; pass --yes"
+  local first_name first_char last_char
+  first_name="$(sed -n '/^---$/,/^---$/s/^name:[[:space:]]*//p' "$target_file" | head -n 1)"
+  first_name="${first_name%"${first_name##*[![:space:]]}"}"
+  if [[ ${#first_name} -ge 2 ]]; then
+    first_char="${first_name:0:1}"
+    last_char="${first_name: -1}"
+    if [[ ( "$first_char" == '"' || "$first_char" == "'" ) && "$last_char" == "$first_char" ]]; then
+      first_name="${first_name:1:-1}"
+    fi
   fi
-  read -r -p "Remove managed skill package files? [y/N] " answer
-  [[ "$answer" == "y" || "$answer" == "Y" ]] || {
-    printf 'cancelled\n'
-    exit 0
-  }
-fi
+  [[ "$first_name" == "$skill_name" ]] || fail "refusing to remove an unexpected skill: name=$first_name"
 
-for rel in "${MANAGED_FILES[@]}"; do
-  target_file="$TARGET_DIR/$rel"
-  if [[ -f "$target_file" ]]; then
-    rm -f -- "$target_file"
+  printf 'remove managed package files from: %s\n' "$target_dir"
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    printf 'dry-run: no files removed\n'
+    return 0
   fi
+
+  if [[ "$YES" -ne 1 ]]; then
+    if [[ ! -t 0 ]]; then
+      fail "confirmation required in non-interactive mode; pass --yes"
+    fi
+    read -r -p "Remove managed skill package files from $target_dir? [y/N] " answer
+    [[ "$answer" == "y" || "$answer" == "Y" ]] || {
+      printf 'cancelled\n'
+      return 0
+    }
+  fi
+
+  local target_file_path
+  for rel in "${MANAGED_FILES[@]}"; do
+    target_file_path="$target_dir/$rel"
+    if [[ -f "$target_file_path" ]]; then
+      rm -f -- "$target_file_path"
+    fi
+  done
+
+  rmdir "$target_dir/agents" 2>/dev/null || true
+  rmdir "$target_dir/assets" 2>/dev/null || true
+
+  # Preserve backups and any unexpected user-managed files.
+  if rmdir "$target_dir" 2>/dev/null; then
+    printf 'removed skill package directory\n'
+  else
+    printf 'removed managed package files; preserved other files in %s\n' "$target_dir"
+  fi
+}
+
+for variant in "${VARIANTS[@]}"; do
+  uninstall_variant "$variant"
 done
-
-rmdir "$TARGET_DIR/agents" 2>/dev/null || true
-rmdir "$TARGET_DIR/assets" 2>/dev/null || true
-
-# Preserve backups and any unexpected user-managed files.
-if rmdir "$TARGET_DIR" 2>/dev/null; then
-  printf 'removed skill package directory\n'
-else
-  printf 'removed managed package files; preserved other files in %s\n' "$TARGET_DIR"
-fi

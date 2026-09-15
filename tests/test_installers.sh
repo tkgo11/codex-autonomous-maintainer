@@ -215,4 +215,15 @@ cp "$ROOT/assets/icon.svg" "$QUOTED_DIR/assets/icon.svg"
 bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/quoted-project" --yes
 assert_package_removed "$QUOTED_DIR"
 
+# --variant both installs and uninstalls each variant in one pass.
+BOTH_PROJECT="$TMP/both-project"
+mkdir -p "$BOTH_PROJECT"
+bash "$ROOT/install.sh" --variant both --scope project --project-dir "$BOTH_PROJECT"
+assert_package "$ROOT" "$BOTH_PROJECT/.codex/skills/autonomous-maintainer"
+assert_package "$ROOT/standalone" "$BOTH_PROJECT/.codex/skills/autonomous-maintainer-standalone"
+bash "$ROOT/install.sh" --variant both --scope project --project-dir "$BOTH_PROJECT" >/dev/null
+bash "$ROOT/uninstall.sh" --variant both --scope project --project-dir "$BOTH_PROJECT" --yes >/dev/null
+assert_package_removed "$BOTH_PROJECT/.codex/skills/autonomous-maintainer"
+assert_package_removed "$BOTH_PROJECT/.codex/skills/autonomous-maintainer-standalone"
+
 echo 'ok: installer smoke tests passed'

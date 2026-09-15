@@ -65,6 +65,12 @@ OMX, user scope:
 bash ./install.sh --variant omx --scope user
 ```
 
+Both variants in one step:
+
+```bash
+bash ./install.sh --variant both --scope user
+```
+
 #### Windows PowerShell
 
 Standalone, user scope:
@@ -77,6 +83,12 @@ OMX, user scope:
 
 ```powershell
 .\install.ps1 -Variant omx -Scope user
+```
+
+Both variants in one step:
+
+```powershell
+.\install.ps1 -Variant both -Scope user
 ```
 
 Restart Codex after installation so the new skill is discovered.
@@ -113,7 +125,7 @@ Choose **Standalone** unless you already use OMX or specifically want its specia
 | Mandatory fingerprinted pre-PR approval | Yes | Yes |
 | OMX specialist routing such as `$ralplan`, `$ultragoal`, and `$ultraqa` | No | Yes |
 
-Both variants can be installed at the same time because they use separate skill directories.
+Both variants can be installed at the same time because they use separate skill directories, either with two invocations or one `--variant both` run.
 
 ## How a run works
 
@@ -357,6 +369,7 @@ Linux or macOS:
 ```bash
 bash ./uninstall.sh --variant standalone --scope user
 bash ./uninstall.sh --variant omx --scope user
+bash ./uninstall.sh --variant both --scope user
 ```
 
 Use `--yes` for non-interactive removal and `--dry-run` to preview it.
@@ -366,7 +379,10 @@ Windows PowerShell:
 ```powershell
 .\uninstall.ps1 -Variant standalone -Scope user
 .\uninstall.ps1 -Variant omx -Scope user
+.\uninstall.ps1 -Variant both -Scope user
 ```
+
+The PowerShell uninstaller prompts for confirmation; pass `-Confirm:$false` for non-interactive removal.
 
 The uninstallers verify the installed skill identity, remove only the managed `SKILL.md`, metadata, and icon, and preserve backups or unexpected files instead of deleting the entire directory blindly.
 
