@@ -209,6 +209,20 @@ try {
     )
     Assert-PackageRemoved -TargetDir $QuotedDir
 
+    # -Variant both installs and uninstalls each variant in one pass.
+    $BothProject = Join-Path $Temp 'both-project'
+    New-Item -ItemType Directory -Path $BothProject -Force | Out-Null
+    Invoke-PwshFile -File $Install -ScriptArgs @(
+        '-Variant', 'both', '-Scope', 'project', '-ProjectDir', $BothProject
+    )
+    Assert-Package -SourceDir $Root -TargetDir (Join-Path $BothProject '.codex/skills/autonomous-maintainer')
+    Assert-Package -SourceDir $StandaloneSource -TargetDir (Join-Path $BothProject '.codex/skills/autonomous-maintainer-standalone')
+    Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+        '-Variant', 'both', '-Scope', 'project', '-ProjectDir', $BothProject, '-Confirm:$false'
+    )
+    Assert-PackageRemoved -TargetDir (Join-Path $BothProject '.codex/skills/autonomous-maintainer')
+    Assert-PackageRemoved -TargetDir (Join-Path $BothProject '.codex/skills/autonomous-maintainer-standalone')
+
     Write-Host 'ok: PowerShell installer smoke tests passed'
 } finally {
     if (Test-Path -LiteralPath $Temp) {
