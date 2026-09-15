@@ -235,6 +235,13 @@ if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/unclosed-fence-
 fi
 [[ -f "$UNOPENED_DIR/SKILL.md" ]]
 
+# A CRLF-written skill still identifies correctly for uninstall.
+CRLF_DIR="$TMP/crlf-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$CRLF_DIR"
+printf -- '---\r\nname: autonomous-maintainer\r\ndescription: x\r\n---\r\n' > "$CRLF_DIR/SKILL.md"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/crlf-project" --yes >/dev/null
+[[ ! -e "$CRLF_DIR/SKILL.md" ]]
+
 # --variant both installs and uninstalls each variant in one pass.
 BOTH_PROJECT="$TMP/both-project"
 mkdir -p "$BOTH_PROJECT"

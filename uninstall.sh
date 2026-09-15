@@ -107,6 +107,7 @@ uninstall_variant() {
 
   local first_name first_char last_char
   first_name="$(awk '
+    { sub(/\r$/, "") }
     NR == 1 { if ($0 != "---") exit; next }
     /^---$/ { closed = 1; exit }
     !done && sub(/^name:[[:space:]]*/, "") { name = $0; done = 1 }
