@@ -10,17 +10,24 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Validate skill variants
         run: make validate
       - name: Verify package checksum coverage
         run: python3 scripts/validate_checksums.py
+      - name: Lint shell scripts
+        run: shellcheck install.sh uninstall.sh tests/test_installers.sh
       - name: Test installers
         run: bash tests/test_installers.sh
+      - name: Test PowerShell installers on Linux
+        shell: pwsh
+        run: ./tests/test_installers.ps1
 
   validate-powershell:
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - name: Test PowerShell installers

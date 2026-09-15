@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Added `--variant both` to all four installers and uninstallers so the OMX and standalone skills can be deployed or removed in a single pass.
+- Hardened the PowerShell uninstaller to require confirmation (`ConfirmImpact=High`), matching the POSIX `--yes`/prompt gate, and normalized quoted frontmatter names during identity checks in both uninstallers.
+- Made PowerShell Python discovery robust on merged-bin systems where `python3` resolves to multiple application entries.
+- Added missing negative-path installer tests: invalid scope, missing project directory, not-installed uninstall, dry-run uninstall, non-interactive refusal, identity-mismatch refusal, and quoted-name acceptance.
+- Enforced the full documented invocation-option table in the skill validator and scoped metadata key checks to their `interface:`/`policy:` mappings.
+- Added `scripts/validate_release.py` to keep `VERSION`, `CHANGELOG.md`, and `README.md` consistent, and extended CI with shellcheck, job timeouts, and a Linux PowerShell test leg.
+
 ## 2.3.0 — 2026-09-12
 
 - Added Codex-native `agents/openai.yaml` metadata and UI assets for both the OMX and standalone variants, based on the attached standalone package and aligned with current Codex skill metadata conventions.

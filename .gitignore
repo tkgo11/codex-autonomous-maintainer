@@ -3,5 +3,6 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *.backup-*
+.*.tmp.*
 .omx/
 .autonomous-maintainer/

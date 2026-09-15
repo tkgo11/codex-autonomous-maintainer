@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 VARIANT="omx"
 SCOPE="user"
 PROJECT_DIR=""
@@ -81,7 +81,7 @@ else
     PROJECT_DIR="$PWD"
   fi
   [[ -d "$PROJECT_DIR" ]] || fail "project directory does not exist: $PROJECT_DIR"
-  PROJECT_DIR="$(CDPATH= cd -- "$PROJECT_DIR" && pwd)"
+  PROJECT_DIR="$(CDPATH='' cd -- "$PROJECT_DIR" && pwd)"
   TARGET_ROOT="$PROJECT_DIR/.codex/skills"
 fi
 

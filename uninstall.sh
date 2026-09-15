@@ -77,7 +77,7 @@ if [[ "$SCOPE" == "user" ]]; then
 else
   [[ -n "$PROJECT_DIR" ]] || PROJECT_DIR="$PWD"
   [[ -d "$PROJECT_DIR" ]] || fail "project directory does not exist: $PROJECT_DIR"
-  PROJECT_DIR="$(CDPATH= cd -- "$PROJECT_DIR" && pwd)"
+  PROJECT_DIR="$(CDPATH='' cd -- "$PROJECT_DIR" && pwd)"
   TARGET_ROOT="$PROJECT_DIR/.codex/skills"
 fi
 
