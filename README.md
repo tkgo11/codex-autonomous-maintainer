@@ -65,6 +65,12 @@ OMX, user scope:
 bash ./install.sh --variant omx --scope user
 ```
 
+Both variants in one step:
+
+```bash
+bash ./install.sh --variant both --scope user
+```
+
 #### Windows PowerShell
 
 Standalone, user scope:
@@ -77,6 +83,12 @@ OMX, user scope:
 
 ```powershell
 .\install.ps1 -Variant omx -Scope user
+```
+
+Both variants in one step:
+
+```powershell
+.\install.ps1 -Variant both -Scope user
 ```
 
 Restart Codex after installation so the new skill is discovered.
@@ -99,6 +111,8 @@ $autonomous-maintainer
 
 The default invocation performs repository-wide apply mode and prepares a ready pull request, but it still stops for inspection before any candidate branch push or PR creation/update.
 
+See [examples/invocations.md](examples/invocations.md) for explicit-option invocations and approval flows, and [examples/AGENTS.md.snippet](examples/AGENTS.md.snippet) for a repository-policy excerpt.
+
 ## Choosing a variant
 
 Choose **Standalone** unless you already use OMX or specifically want its specialist workflows.
@@ -113,7 +127,7 @@ Choose **Standalone** unless you already use OMX or specifically want its specia
 | Mandatory fingerprinted pre-PR approval | Yes | Yes |
 | OMX specialist routing such as `$ralplan`, `$ultragoal`, and `$ultraqa` | No | Yes |
 
-Both variants can be installed at the same time because they use separate skill directories.
+Both variants can be installed at the same time because they use separate skill directories, either with two invocations or one `--variant both` run.
 
 ## How a run works
 
@@ -357,6 +371,7 @@ Linux or macOS:
 ```bash
 bash ./uninstall.sh --variant standalone --scope user
 bash ./uninstall.sh --variant omx --scope user
+bash ./uninstall.sh --variant both --scope user
 ```
 
 Use `--yes` for non-interactive removal and `--dry-run` to preview it.
@@ -366,7 +381,10 @@ Windows PowerShell:
 ```powershell
 .\uninstall.ps1 -Variant standalone -Scope user
 .\uninstall.ps1 -Variant omx -Scope user
+.\uninstall.ps1 -Variant both -Scope user
 ```
+
+The PowerShell uninstaller prompts for confirmation; pass `-Confirm:$false` for non-interactive removal.
 
 The uninstallers verify the installed skill identity, remove only the managed `SKILL.md`, metadata, and icon, and preserve backups or unexpected files instead of deleting the entire directory blindly.
 
@@ -374,20 +392,25 @@ The uninstallers verify the installed skill identity, remove only the managed `S
 
 ```text
 .
-├── SKILL.md                  # OMX skill
-├── agents/openai.yaml         # OMX Codex UI/invocation metadata
-├── assets/icon.svg            # OMX UI asset
+├── SKILL.md                       # OMX skill
+├── agents/openai.yaml             # OMX Codex UI/invocation metadata
+├── assets/icon.svg                # OMX UI asset
 ├── standalone/
-│   ├── SKILL.md               # Framework-independent skill
-│   ├── agents/openai.yaml     # Standalone Codex metadata
-│   └── assets/icon.svg        # Standalone UI asset
-├── install.sh / install.ps1  # Safe package installers
+│   ├── SKILL.md                   # Framework-independent skill
+│   ├── agents/openai.yaml         # Standalone Codex metadata
+│   └── assets/icon.svg            # Standalone UI asset
+├── install.sh / install.ps1       # Safe package installers
 ├── uninstall.sh / uninstall.ps1
-├── scripts/validate_skill.py # Skill + metadata structural validator
-├── scripts/validate_checksums.py # Complete manifest validator
-├── tests/                    # Installer and package tests
+├── scripts/validate_skill.py      # Skill + metadata structural validator
+├── scripts/validate_checksums.py  # Complete manifest validator
+├── scripts/validate_release.py    # VERSION/CHANGELOG/README consistency
+├── tests/                         # Installer and package tests
+├── examples/                      # Invocation examples + AGENTS.md snippet
+├── .github/workflows/             # CI validation
+├── Makefile                       # Validation and install targets
 ├── CHANGELOG.md
 ├── CHECKSUMS.txt
+├── LICENSE.md
 └── VERSION
 ```
 
@@ -403,11 +426,14 @@ make checksums-check
 make test
 ```
 
+`make validate` also checks that `VERSION`, `CHANGELOG.md`, and `README.md` agree on the current release version. `make test` runs the PowerShell installer suite as well when `pwsh` is available.
+
 Direct validation:
 
 ```bash
 python3 scripts/validate_skill.py SKILL.md
 python3 scripts/validate_skill.py standalone/SKILL.md
+python3 scripts/validate_release.py
 ```
 
 Use `make checksums` after intentional tracked-file changes to regenerate `CHECKSUMS.txt`. CI verifies that the manifest contains every tracked package file exactly once and that every digest matches.

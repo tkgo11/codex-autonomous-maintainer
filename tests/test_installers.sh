@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-ROOT="$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP="$(mktemp -d)"
 cleanup() { rm -rf -- "$TMP"; }
 trap cleanup EXIT
@@ -33,6 +33,58 @@ assert_package_removed() {
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/SKILL.md"
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/standalone/SKILL.md"
 
+# Validator contract fixtures.
+FIXTURE="$TMP/fixture-skill"
+mkdir -p "$FIXTURE/agents" "$FIXTURE/assets"
+cp "$ROOT/agents/openai.yaml" "$FIXTURE/agents/openai.yaml"
+cp "$ROOT/assets/icon.svg" "$FIXTURE/assets/icon.svg"
+
+# A skill document whose invocation table drops an enforced option must fail.
+sed '/^| .permission_fallback./d' "$ROOT/SKILL.md" > "$FIXTURE/SKILL.md"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected option-table drift to fail validation' >&2
+  exit 1
+fi
+
+# A quoted frontmatter name is normalized by the validator and must still pass.
+sed 's/^name: autonomous-maintainer$/name: "autonomous-maintainer"/' "$ROOT/SKILL.md" > "$FIXTURE/SKILL.md"
+python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE/SKILL.md"
+
+# Metadata keys under the wrong top-level mapping must fail.
+sed 's/^  display_name: .*$/  display_name: "Moved"/' "$ROOT/agents/openai.yaml" > "$FIXTURE/agents/openai.yaml"
+python3 - "$FIXTURE/agents/openai.yaml" <<'PY'
+import sys
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+out, moved = [], False
+for line in lines:
+    if line.startswith("  display_name:"):
+        continue
+    out.append(line)
+    if line == "policy:" and not moved:
+        out.append('  display_name: "Moved"')
+        moved = True
+open(sys.argv[1], "w", encoding="utf-8").write("\n".join(out) + "\n")
+PY
+cp "$ROOT/SKILL.md" "$FIXTURE/SKILL.md"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected metadata key under wrong mapping to fail validation' >&2
+  exit 1
+fi
+cp "$ROOT/agents/openai.yaml" "$FIXTURE/agents/openai.yaml"
+
+# Release-version consistency validator.
+RELEASE_FIXTURE="$TMP/release-fixture"
+mkdir -p "$RELEASE_FIXTURE"
+printf '9.9.9\n' > "$RELEASE_FIXTURE/VERSION"
+printf '# Changelog\n\n## 9.9.9 — 2030-01-01\n\n- entry\n' > "$RELEASE_FIXTURE/CHANGELOG.md"
+printf 'Current version: **9.9.9**.\n' > "$RELEASE_FIXTURE/README.md"
+python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE"
+printf '9.9.8\n' > "$RELEASE_FIXTURE/VERSION"
+if python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE" >/dev/null 2>&1; then
+  echo 'expected version drift to fail validation' >&2
+  exit 1
+fi
+
 if bash "$ROOT/install.sh" --variant invalid >/dev/null 2>&1; then
   echo 'expected an unknown variant to fail' >&2
   exit 1
@@ -50,7 +102,6 @@ bash "$ROOT/install.sh" --scope user
 
 bash "$ROOT/install.sh" --variant standalone --scope user
 STANDALONE_USER_DIR="$HOME/.codex/skills/autonomous-maintainer-standalone"
-STANDALONE_USER_FILE="$STANDALONE_USER_DIR/SKILL.md"
 assert_package "$ROOT/standalone" "$STANDALONE_USER_DIR"
 bash "$ROOT/install.sh" --variant standalone --scope user
 
@@ -114,5 +165,159 @@ assert_package_removed "$STANDALONE_USER_DIR"
 bash "$ROOT/uninstall.sh" --scope user --yes
 assert_package_removed "$USER_DIR"
 # A forced-install backup remains intentionally, so the directory may remain.
+
+# Invalid scope and missing project directories must fail cleanly.
+if bash "$ROOT/install.sh" --scope invalid >/dev/null 2>&1; then
+  echo 'expected an unknown scope to fail' >&2
+  exit 1
+fi
+if bash "$ROOT/install.sh" --scope project --project-dir "$TMP/no-such-dir" >/dev/null 2>&1; then
+  echo 'expected a missing project directory to fail' >&2
+  exit 1
+fi
+
+# Uninstall reports a missing skill without removing anything.
+EMPTY_PROJECT="$TMP/empty-project"
+mkdir -p "$EMPTY_PROJECT"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$EMPTY_PROJECT" --yes | grep -q 'not installed'
+
+# Uninstall dry-run preserves managed files.
+DRY_UNINSTALL="$TMP/dry-uninstall-project"
+mkdir -p "$DRY_UNINSTALL"
+bash "$ROOT/install.sh" --scope project --project-dir "$DRY_UNINSTALL"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$DRY_UNINSTALL" --dry-run
+[[ -f "$DRY_UNINSTALL/.codex/skills/autonomous-maintainer/SKILL.md" ]]
+
+# Non-interactive uninstall without --yes refuses and preserves files.
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$DRY_UNINSTALL" < /dev/null >/dev/null 2>&1; then
+  echo 'expected non-interactive uninstall without --yes to fail' >&2
+  exit 1
+fi
+[[ -f "$DRY_UNINSTALL/.codex/skills/autonomous-maintainer/SKILL.md" ]]
+
+# An invocation table with an extra option row must fail validation.
+FIXTURE_EXTRA="$TMP/fixture-extra"
+mkdir -p "$FIXTURE_EXTRA/agents" "$FIXTURE_EXTRA/assets"
+printf "| \`bogus_option\` | \`x\` | \`x\` |\n" > "$TMP/bogus-row"
+sed '/^| .feature_policy. |/r '"$TMP/bogus-row" "$ROOT/SKILL.md" > "$FIXTURE_EXTRA/SKILL.md"
+cp "$ROOT/agents/openai.yaml" "$FIXTURE_EXTRA/agents/openai.yaml"
+cp "$ROOT/assets/icon.svg" "$FIXTURE_EXTRA/assets/icon.svg"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected extra option-table row to fail validation' >&2
+  exit 1
+fi
+
+# A SKILL.md identifying as a different skill is refused and preserved.
+MISMATCH_DIR="$TMP/mismatch-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$MISMATCH_DIR"
+sed 's/^name: autonomous-maintainer$/name: other-skill/' "$ROOT/SKILL.md" > "$MISMATCH_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/mismatch-project" --yes >/dev/null 2>&1; then
+  echo 'expected mismatched skill identity to be refused' >&2
+  exit 1
+fi
+[[ -f "$MISMATCH_DIR/SKILL.md" ]]
+
+# A quoted frontmatter name still identifies the skill for uninstall.
+QUOTED_DIR="$TMP/quoted-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$QUOTED_DIR/agents" "$QUOTED_DIR/assets"
+sed 's/^name: autonomous-maintainer$/name: "autonomous-maintainer"/' "$ROOT/SKILL.md" > "$QUOTED_DIR/SKILL.md"
+cp "$ROOT/agents/openai.yaml" "$QUOTED_DIR/agents/openai.yaml"
+cp "$ROOT/assets/icon.svg" "$QUOTED_DIR/assets/icon.svg"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/quoted-project" --yes
+assert_package_removed "$QUOTED_DIR"
+
+# An unclosed quoted name is refused (validator requires a matched pair).
+UNCLOSED_QUOTE_DIR="$TMP/unclosed-quote-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$UNCLOSED_QUOTE_DIR"
+sed 's/^name: autonomous-maintainer$/name: "autonomous-maintainer/' "$ROOT/SKILL.md" > "$UNCLOSED_QUOTE_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/unclosed-quote-project" --yes >/dev/null 2>&1; then
+  echo 'expected unclosed quoted name to be refused' >&2
+  exit 1
+fi
+[[ -f "$UNCLOSED_QUOTE_DIR/SKILL.md" ]]
+
+# A document without a closing frontmatter fence is refused even when a
+# name: line appears in the body. (Relies on SKILL.md's body, line 5+,
+# containing no line that is exactly "---".)
+UNOPENED_DIR="$TMP/unclosed-fence-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$UNOPENED_DIR"
+{ printf -- '---\ndescription: dangling\nname: autonomous-maintainer\n'; tail -n +5 "$ROOT/SKILL.md"; } > "$UNOPENED_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/unclosed-fence-project" --yes >/dev/null 2>&1; then
+  echo 'expected missing closing frontmatter fence to be refused' >&2
+  exit 1
+fi
+[[ -f "$UNOPENED_DIR/SKILL.md" ]]
+
+# A CRLF-written skill still identifies correctly for uninstall.
+CRLF_DIR="$TMP/crlf-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$CRLF_DIR"
+printf -- '---\r\nname: autonomous-maintainer\r\ndescription: x\r\n---\r\n' > "$CRLF_DIR/SKILL.md"
+bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/crlf-project" --yes >/dev/null
+[[ ! -e "$CRLF_DIR/SKILL.md" ]]
+
+# A closing fence with trailing content is refused.
+DASH_EXTRA_DIR="$TMP/dash-extra-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$DASH_EXTRA_DIR"
+printf -- '---\nname: autonomous-maintainer\n--- extra\n' > "$DASH_EXTRA_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/dash-extra-project" --yes >/dev/null 2>&1; then
+  echo 'expected closing fence with trailing content to be refused' >&2
+  exit 1
+fi
+[[ -f "$DASH_EXTRA_DIR/SKILL.md" ]]
+
+# A UTF-8 BOM before the frontmatter is refused.
+BOM_DIR="$TMP/bom-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$BOM_DIR"
+printf -- '\xef\xbb\xbf---\nname: autonomous-maintainer\ndescription: x\n---\n' > "$BOM_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/bom-project" --yes >/dev/null 2>&1; then
+  echo 'expected BOM-prefixed skill to be refused' >&2
+  exit 1
+fi
+[[ -f "$BOM_DIR/SKILL.md" ]]
+
+# A differently-cased skill name is refused.
+UPPER_DIR="$TMP/upper-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$UPPER_DIR"
+printf -- '---\nname: AUTONOMOUS-MAINTAINER\ndescription: x\n---\n' > "$UPPER_DIR/SKILL.md"
+if bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/upper-project" --yes >/dev/null 2>&1; then
+  echo 'expected case-mismatched skill name to be refused' >&2
+  exit 1
+fi
+[[ -f "$UPPER_DIR/SKILL.md" ]]
+
+# A FIFO at a managed path is not a regular file: uninstall reports it
+# not-installed and install refuses, without blocking on the pipe.
+FIFO_DIR="$TMP/fifo-project/.codex/skills/autonomous-maintainer"
+mkdir -p "$FIFO_DIR"
+mkfifo "$FIFO_DIR/SKILL.md"
+timeout 30 bash "$ROOT/uninstall.sh" --scope project --project-dir "$TMP/fifo-project" --yes > "$TMP/fifo-uninstall.log" 2>&1
+grep -q 'not installed' "$TMP/fifo-uninstall.log"
+if timeout 30 bash "$ROOT/install.sh" --scope project --project-dir "$TMP/fifo-project" >/dev/null 2>&1; then
+  echo 'expected install over a FIFO managed path to fail' >&2
+  exit 1
+fi
+[[ -p "$FIFO_DIR/SKILL.md" ]]
+
+# --variant both fails fast when one variant cannot be installed, leaving
+# the earlier variant's result intact.
+PARTIAL_PROJECT="$TMP/partial-project"
+mkdir -p "$PARTIAL_PROJECT/.codex/skills"
+touch "$PARTIAL_PROJECT/.codex/skills/autonomous-maintainer-standalone"
+if bash "$ROOT/install.sh" --variant both --scope project --project-dir "$PARTIAL_PROJECT" >/dev/null 2>&1; then
+  echo 'expected --variant both to fail on a file-blocked variant' >&2
+  exit 1
+fi
+[[ -f "$PARTIAL_PROJECT/.codex/skills/autonomous-maintainer/SKILL.md" ]]
+
+# --variant both installs and uninstalls each variant in one pass.
+BOTH_PROJECT="$TMP/both-project"
+mkdir -p "$BOTH_PROJECT"
+bash "$ROOT/install.sh" --variant both --scope project --project-dir "$BOTH_PROJECT"
+assert_package "$ROOT" "$BOTH_PROJECT/.codex/skills/autonomous-maintainer"
+assert_package "$ROOT/standalone" "$BOTH_PROJECT/.codex/skills/autonomous-maintainer-standalone"
+bash "$ROOT/install.sh" --variant both --scope project --project-dir "$BOTH_PROJECT" >/dev/null
+bash "$ROOT/uninstall.sh" --variant both --scope project --project-dir "$BOTH_PROJECT" --yes >/dev/null
+assert_package_removed "$BOTH_PROJECT/.codex/skills/autonomous-maintainer"
+assert_package_removed "$BOTH_PROJECT/.codex/skills/autonomous-maintainer-standalone"
 
 echo 'ok: installer smoke tests passed'
