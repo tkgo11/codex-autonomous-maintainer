@@ -34,11 +34,16 @@ def tracked_paths() -> list[str]:
     except (OSError, subprocess.CalledProcessError) as exc:
         fail(f"cannot enumerate tracked files: {exc}")
 
-    paths = [
-        item.decode("utf-8")
-        for item in result.stdout.split(b"\0")
-        if item and item.decode("utf-8") != SELF
-    ]
+    paths = []
+    for item in result.stdout.split(b"\0"):
+        if not item:
+            continue
+        try:
+            rel = item.decode("utf-8")
+        except UnicodeDecodeError:
+            fail(f"tracked path is not valid UTF-8: {item!r}")
+        if rel != SELF:
+            paths.append(rel)
     paths.sort()
 
     try:
