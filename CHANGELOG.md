@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Reject duplicate invocation-table rows and prerelease changelog headings that previously slipped past set-based/word-boundary validators; cover both with regression tests.
+
 - Refuse symlinked installation-root ancestors in both shell and PowerShell installers/uninstallers; add Unix regression fixtures for redirected project roots.
 
 - Scope package checksums to distributable tracked artifacts, excluding GitHub Actions and Renovate configuration so bot upgrades no longer break unrelated package validation.

@@ -99,6 +99,14 @@ if python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE" >/dev/n
   exit 1
 fi
 
+# A prerelease heading must not masquerade as an exact release.
+printf '9.9.9\n' > "$RELEASE_FIXTURE/VERSION"
+printf '# Changelog\n\n## 9.9.9-beta — 2030-01-01\n\n- entry\n' > "$RELEASE_FIXTURE/CHANGELOG.md"
+if python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE" >/dev/null 2>&1; then
+  echo 'expected prerelease heading mismatch to fail validation' >&2
+  exit 1
+fi
+
 if bash "$ROOT/install.sh" --variant invalid >/dev/null 2>&1; then
   echo 'expected an unknown variant to fail' >&2
   exit 1
@@ -243,6 +251,13 @@ cp "$ROOT/agents/openai.yaml" "$FIXTURE_EXTRA/agents/openai.yaml"
 cp "$ROOT/assets/icon.svg" "$FIXTURE_EXTRA/assets/icon.svg"
 if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/null 2>&1; then
   echo 'expected extra option-table row to fail validation' >&2
+  exit 1
+fi
+
+# A duplicate table row must fail even if the set of option names is valid.
+sed '/^| `mode` |/p' "$ROOT/SKILL.md" > "$FIXTURE_EXTRA/SKILL.md"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected duplicate option-table row to fail validation' >&2
   exit 1
 fi
 
