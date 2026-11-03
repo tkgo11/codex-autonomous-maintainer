@@ -255,6 +255,7 @@ if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/nul
 fi
 
 # A duplicate table row must fail even if the set of option names is valid.
+# shellcheck disable=SC2016 # Backticks here denote literal Markdown option syntax.
 sed '/^| `mode` |/p' "$ROOT/SKILL.md" > "$FIXTURE_EXTRA/SKILL.md"
 if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/null 2>&1; then
   echo 'expected duplicate option-table row to fail validation' >&2
