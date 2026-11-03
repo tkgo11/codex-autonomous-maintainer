@@ -39,7 +39,7 @@ def main() -> None:
         fail(f"VERSION must be a bare X.Y.Z version, got {version!r}")
 
     headings = re.findall(
-        r"(?m)^## (\d+\.\d+\.\d+)\b", changelog.read_text(encoding="utf-8")
+        r"(?m)^## (\d+\.\d+\.\d+)(?=\s|$)", changelog.read_text(encoding="utf-8")
     )
     if not headings:
         fail("CHANGELOG.md has no '## X.Y.Z' release heading")

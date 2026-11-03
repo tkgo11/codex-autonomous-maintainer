@@ -113,6 +113,29 @@ try {
     if (Test-Path -LiteralPath (Join-Path $DryTarget 'SKILL.md')) { throw 'Dry-run unexpectedly created SKILL.md' }
     if (Test-Path -LiteralPath (Join-Path $DryTarget 'agents/openai.yaml')) { throw 'Dry-run unexpectedly created metadata' }
 
+    # Refuse symlinked .codex and skills parent directories on Unix.
+    if (-not $IsWindows) {
+        foreach ($LinkedAncestor in @('.codex', '.codex/skills')) {
+            $CaseName = $LinkedAncestor.Replace('/', '-').Replace('.', '')
+            $LinkedProject = Join-Path $Temp ("linked-" + $CaseName)
+            $ExternalTarget = Join-Path $Temp ("external-" + $CaseName)
+            New-Item -ItemType Directory -Path $LinkedProject, $ExternalTarget -Force | Out-Null
+            if ($LinkedAncestor -eq '.codex/skills') {
+                New-Item -ItemType Directory -Path (Join-Path $LinkedProject '.codex') -Force | Out-Null
+            }
+            New-Item -ItemType SymbolicLink -Path (Join-Path $LinkedProject $LinkedAncestor) -Target $ExternalTarget | Out-Null
+            Invoke-PwshFile -File $Install -ScriptArgs @(
+                '-Scope', 'project', '-ProjectDir', $LinkedProject
+            ) -ExpectFailure
+            Invoke-PwshFile -File $Uninstall -ScriptArgs @(
+                '-Scope', 'project', '-ProjectDir', $LinkedProject, '-Confirm:$false'
+            ) -ExpectFailure
+            if (Get-ChildItem -LiteralPath $ExternalTarget -Recurse -Filter 'SKILL.md') {
+                throw "Linked ancestor allowed access outside the project: $LinkedAncestor"
+            }
+        }
+    }
+
     $Project = Join-Path $Temp 'project'
     New-Item -ItemType Directory -Path $Project -Force | Out-Null
     Invoke-PwshFile -File $Install -ScriptArgs @(

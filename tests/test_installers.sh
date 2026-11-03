@@ -30,6 +30,20 @@ assert_package_removed() {
   done
 }
 
+# Bot-managed CI configuration is not a distributable skill artifact.
+python3 - "$ROOT" <<'PY'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(sys.argv[1]) / "scripts"))
+from validate_checksums import tracked_paths
+
+paths = set(tracked_paths())
+assert "renovate.json" not in paths, "Renovate config must not break package checksums"
+assert not any(p.startswith(".github/") for p in paths), "CI files are not skill artifacts"
+assert {"SKILL.md", "standalone/SKILL.md", "install.sh", "uninstall.sh"} <= paths
+PY
+
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/SKILL.md"
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/standalone/SKILL.md"
 
@@ -82,6 +96,14 @@ python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE"
 printf '9.9.8\n' > "$RELEASE_FIXTURE/VERSION"
 if python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE" >/dev/null 2>&1; then
   echo 'expected version drift to fail validation' >&2
+  exit 1
+fi
+
+# A prerelease heading must not masquerade as an exact release.
+printf '9.9.9\n' > "$RELEASE_FIXTURE/VERSION"
+printf '# Changelog\n\n## 9.9.9-beta — 2030-01-01\n\n- entry\n' > "$RELEASE_FIXTURE/CHANGELOG.md"
+if python3 "$ROOT/scripts/validate_release.py" --root "$RELEASE_FIXTURE" >/dev/null 2>&1; then
+  echo 'expected prerelease heading mismatch to fail validation' >&2
   exit 1
 fi
 
@@ -140,6 +162,31 @@ if bash "$ROOT/uninstall.sh" --scope project --project-dir "$LINK_PROJECT" --yes
   exit 1
 fi
 [[ -f "$LINK_TARGET/SKILL.md" ]]
+
+# Symlinked .codex or skills ancestors must not redirect writes or deletes.
+for LINK_PARENT in '.codex' '.codex/skills'; do
+  case "$LINK_PARENT" in
+    '.codex') CASE_NAME="codex" ;;
+    *) CASE_NAME="skills" ;;
+  esac
+  LINK_PARENT_PROJECT="$TMP/ancestor-$CASE_NAME"
+  LINK_PARENT_TARGET="$TMP/external-$CASE_NAME"
+  mkdir -p "$LINK_PARENT_PROJECT" "$LINK_PARENT_TARGET"
+  if [[ "$LINK_PARENT" == '.codex/skills' ]]; then
+    mkdir -p "$LINK_PARENT_PROJECT/.codex"
+  fi
+  ln -s "$LINK_PARENT_TARGET" "$LINK_PARENT_PROJECT/$LINK_PARENT"
+  if bash "$ROOT/install.sh" --scope project --project-dir "$LINK_PARENT_PROJECT" >/dev/null 2>&1; then
+    echo "expected install to refuse linked ancestor: $LINK_PARENT" >&2
+    exit 1
+  fi
+  if bash "$ROOT/uninstall.sh" --scope project --project-dir "$LINK_PARENT_PROJECT" --yes >/dev/null 2>&1; then
+    echo "expected uninstall to refuse linked ancestor: $LINK_PARENT" >&2
+    exit 1
+  fi
+  [[ ! -e "$LINK_PARENT_TARGET/skills/autonomous-maintainer/SKILL.md" ]]
+  [[ ! -e "$LINK_PARENT_TARGET/autonomous-maintainer/SKILL.md" ]]
+done
 
 PROJECT="$TMP/project"
 mkdir -p "$PROJECT"
@@ -204,6 +251,14 @@ cp "$ROOT/agents/openai.yaml" "$FIXTURE_EXTRA/agents/openai.yaml"
 cp "$ROOT/assets/icon.svg" "$FIXTURE_EXTRA/assets/icon.svg"
 if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/null 2>&1; then
   echo 'expected extra option-table row to fail validation' >&2
+  exit 1
+fi
+
+# A duplicate table row must fail even if the set of option names is valid.
+# shellcheck disable=SC2016 # Backticks here denote literal Markdown option syntax.
+sed '/^| `mode` |/p' "$ROOT/SKILL.md" > "$FIXTURE_EXTRA/SKILL.md"
+if python3 "$ROOT/scripts/validate_skill.py" "$FIXTURE_EXTRA/SKILL.md" >/dev/null 2>&1; then
+  echo 'expected duplicate option-table row to fail validation' >&2
   exit 1
 fi
 

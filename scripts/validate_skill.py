@@ -263,7 +263,10 @@ def validate(path: Path) -> None:
     if missing_options:
         fail("Invocation Contract is missing options: " + ", ".join(missing_options))
 
-    documented_options = set(re.findall(r"(?m)^\| `([a-z_]+)` \|", invocation))
+    documented_rows = re.findall(r"(?m)^\| `([a-z_]+)` \|", invocation)
+    if len(documented_rows) != len(set(documented_rows)):
+        fail("Invocation Contract option table has duplicate option rows")
+    documented_options = set(documented_rows)
     if documented_options != REQUIRED_OPTIONS:
         extra = sorted(documented_options - REQUIRED_OPTIONS)
         missing = sorted(REQUIRED_OPTIONS - documented_options)

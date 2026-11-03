@@ -14,6 +14,11 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "CHECKSUMS.txt"
 SELF = "CHECKSUMS.txt"
 REQUIRED_EXECUTABLE = {"install.sh", "uninstall.sh"}
+# These files configure GitHub automation rather than the shipped skill package.
+# Excluding them keeps bot-generated workflow upgrades independent of package
+# integrity metadata while all distributable artifacts remain checksummed.
+NON_PACKAGE_FILES = {"renovate.json"}
+NON_PACKAGE_PREFIXES = (".github/",)
 LINE_RE = re.compile(r"^([0-9a-f]{64})  \./(.+)$")
 
 
@@ -42,7 +47,11 @@ def tracked_paths() -> list[str]:
             rel = item.decode("utf-8")
         except UnicodeDecodeError:
             fail(f"tracked path is not valid UTF-8: {item!r}")
-        if rel != SELF:
+        if (
+            rel != SELF
+            and rel not in NON_PACKAGE_FILES
+            and not rel.startswith(NON_PACKAGE_PREFIXES)
+        ):
             paths.append(rel)
     paths.sort()
 

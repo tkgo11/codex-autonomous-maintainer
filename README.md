@@ -414,7 +414,7 @@ The uninstallers verify the installed skill identity, remove only the managed `S
 └── VERSION
 ```
 
-The core workflow remains in the selected `SKILL.md`; installers also deploy `agents/openai.yaml` and `assets/icon.svg` so current Codex surfaces can display and invoke the skill with native metadata. Existing SKILL-only installations are upgraded by adding missing managed files without requiring `--force` when the existing skill content already matches.
+The core workflow remains in the selected `SKILL.md`; installers also deploy `agents/openai.yaml` and `assets/icon.svg` so current Codex surfaces can display and invoke the skill with native metadata. Existing SKILL-only installations are upgraded by adding missing managed files without requiring `--force` when the existing skill content already matches. Both installers and uninstallers refuse symlinked `.codex` (project scope) or `skills` root directories to prevent redirected writes or removals outside the selected installation location.
 
 ## Development
 
@@ -436,7 +436,7 @@ python3 scripts/validate_skill.py standalone/SKILL.md
 python3 scripts/validate_release.py
 ```
 
-Use `make checksums` after intentional tracked-file changes to regenerate `CHECKSUMS.txt`. CI verifies that the manifest contains every tracked package file exactly once and that every digest matches.
+Use `make checksums` after intentional package-file changes to regenerate `CHECKSUMS.txt`. CI verifies that every tracked distributable package file is included exactly once and every digest matches. GitHub Actions workflows under `.github/` and `renovate.json` are automation configuration, not distributable skill files, and are excluded so automated CI dependency updates do not require rewriting package integrity metadata.
 
 Convenience Make targets are also available for user and project installation and user-scope uninstallation.
 
