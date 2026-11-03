@@ -155,6 +155,31 @@ if bash "$ROOT/uninstall.sh" --scope project --project-dir "$LINK_PROJECT" --yes
 fi
 [[ -f "$LINK_TARGET/SKILL.md" ]]
 
+# Symlinked .codex or skills ancestors must not redirect writes or deletes.
+for LINK_PARENT in '.codex' '.codex/skills'; do
+  case "$LINK_PARENT" in
+    '.codex') CASE_NAME="codex" ;;
+    *) CASE_NAME="skills" ;;
+  esac
+  LINK_PARENT_PROJECT="$TMP/ancestor-$CASE_NAME"
+  LINK_PARENT_TARGET="$TMP/external-$CASE_NAME"
+  mkdir -p "$LINK_PARENT_PROJECT" "$LINK_PARENT_TARGET"
+  if [[ "$LINK_PARENT" == '.codex/skills' ]]; then
+    mkdir -p "$LINK_PARENT_PROJECT/.codex"
+  fi
+  ln -s "$LINK_PARENT_TARGET" "$LINK_PARENT_PROJECT/$LINK_PARENT"
+  if bash "$ROOT/install.sh" --scope project --project-dir "$LINK_PARENT_PROJECT" >/dev/null 2>&1; then
+    echo "expected install to refuse linked ancestor: $LINK_PARENT" >&2
+    exit 1
+  fi
+  if bash "$ROOT/uninstall.sh" --scope project --project-dir "$LINK_PARENT_PROJECT" --yes >/dev/null 2>&1; then
+    echo "expected uninstall to refuse linked ancestor: $LINK_PARENT" >&2
+    exit 1
+  fi
+  [[ ! -e "$LINK_PARENT_TARGET/skills/autonomous-maintainer/SKILL.md" ]]
+  [[ ! -e "$LINK_PARENT_TARGET/autonomous-maintainer/SKILL.md" ]]
+done
+
 PROJECT="$TMP/project"
 mkdir -p "$PROJECT"
 bash "$ROOT/install.sh" --scope project --project-dir "$PROJECT"

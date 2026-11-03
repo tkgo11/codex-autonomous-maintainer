@@ -28,6 +28,19 @@ if ($Scope -eq 'user') {
     $TargetRoot = Join-Path $ResolvedProject '.codex/skills'
 }
 
+# Protect parent directories as well as each managed package file.
+# A symlink at .codex or skills would redirect installation/removal.
+$RootsToCheck = @($TargetRoot)
+if ($Scope -eq 'project') {
+    $RootsToCheck += (Join-Path $ResolvedProject '.codex')
+}
+foreach ($Candidate in $RootsToCheck) {
+    $Existing = Get-Item -LiteralPath $Candidate -Force -ErrorAction SilentlyContinue
+    if ($null -ne $Existing -and ($Existing.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw "Refusing symbolic-link/reparse-point skill root: $Candidate"
+    }
+}
+
 function Install-SkillVariant {
     param([string]$V)
 

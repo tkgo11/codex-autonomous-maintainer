@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Refuse symlinked installation-root ancestors in both shell and PowerShell installers/uninstallers; add Unix regression fixtures for redirected project roots.
+
 - Scope package checksums to distributable tracked artifacts, excluding GitHub Actions and Renovate configuration so bot upgrades no longer break unrelated package validation.
 - Add regression coverage for checksum exclusions and explicit oscillation suppression in both maintainer variants.
 

@@ -414,7 +414,7 @@ The uninstallers verify the installed skill identity, remove only the managed `S
 └── VERSION
 ```
 
-The core workflow remains in the selected `SKILL.md`; installers also deploy `agents/openai.yaml` and `assets/icon.svg` so current Codex surfaces can display and invoke the skill with native metadata. Existing SKILL-only installations are upgraded by adding missing managed files without requiring `--force` when the existing skill content already matches.
+The core workflow remains in the selected `SKILL.md`; installers also deploy `agents/openai.yaml` and `assets/icon.svg` so current Codex surfaces can display and invoke the skill with native metadata. Existing SKILL-only installations are upgraded by adding missing managed files without requiring `--force` when the existing skill content already matches. Both installers and uninstallers refuse symlinked `.codex` (project scope) or `skills` root directories to prevent redirected writes or removals outside the selected installation location.
 
 ## Development
 

@@ -81,6 +81,13 @@ else
   TARGET_ROOT="$PROJECT_DIR/.codex/skills"
 fi
 
+# Refuse indirect writes outside the selected Codex skill root.
+# Checking only the final package directory misses symlinked parents.
+if [[ "$SCOPE" == "project" ]]; then
+  [[ ! -L "$PROJECT_DIR/.codex" ]] || fail "refusing symbolic-link project .codex directory: $PROJECT_DIR/.codex"
+fi
+[[ ! -L "$TARGET_ROOT" ]] || fail "refusing symbolic-link skills directory: $TARGET_ROOT"
+
 uninstall_variant() {
   local variant="$1"
   local skill_name
