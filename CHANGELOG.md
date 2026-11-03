@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Scope package checksums to distributable tracked artifacts, excluding GitHub Actions and Renovate configuration so bot upgrades no longer break unrelated package validation.
+- Add regression coverage for checksum exclusions and explicit oscillation suppression in both maintainer variants.
+
 - Added `--variant both` to all four installers and uninstallers so the OMX and standalone skills can be deployed or removed in a single pass.
 - Hardened the PowerShell uninstaller to require confirmation (`ConfirmImpact=High`), matching the POSIX `--yes`/prompt gate.
 - Aligned skill-identity extraction in both uninstallers with the validator contract: a closed `---` frontmatter block is required, only matched surrounding quotes are stripped, BOM-prefixed and case-mismatched names are refused, and CRLF-written skills still uninstall correctly.

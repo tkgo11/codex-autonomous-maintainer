@@ -30,6 +30,20 @@ assert_package_removed() {
   done
 }
 
+# Bot-managed CI configuration is not a distributable skill artifact.
+python3 - "$ROOT" <<'PY'
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(sys.argv[1]) / "scripts"))
+from validate_checksums import tracked_paths
+
+paths = set(tracked_paths())
+assert "renovate.json" not in paths, "Renovate config must not break package checksums"
+assert not any(p.startswith(".github/") for p in paths), "CI files are not skill artifacts"
+assert {"SKILL.md", "standalone/SKILL.md", "install.sh", "uninstall.sh"} <= paths
+PY
+
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/SKILL.md"
 python3 "$ROOT/scripts/validate_skill.py" "$ROOT/standalone/SKILL.md"
 
